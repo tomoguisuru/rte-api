@@ -3,11 +3,11 @@ import { Router, Request, Response, NextFunction } from 'express';
 import Container from 'typedi';
 import { Logger } from 'winston';
 
-import currentUser from '../../middleware/current-user';
-import jwtAuth from '../../middleware/jwt-auth';
-import userAccess from '../../middleware/user-access';
+import currentUser from '../middleware/current-user';
+import userAccess from '../middleware/user-access';
 
 import { User } from '../../models/user';
+import jwtAuth from '../middleware/jwt-auth';
 
 const route = Router();
 const ENDPOINT = '/auth';
@@ -20,6 +20,8 @@ interface IAuthRequest extends Request {
     currentUser: User;
     token: any;
 }
+
+const tokens: string[] = [];
 
 export default (app: Router) => {
     app.use(ENDPOINT, route);
@@ -73,7 +75,6 @@ export default (app: Router) => {
 
             try {
                 const {
-                    currentUser,
                     token: { original_owner },
                 } = (req as IAuthRequest);
 
@@ -104,4 +105,37 @@ export default (app: Router) => {
             }
         }
     );
+
+    route.post(
+        '/token/refresh',
+        jwtAuth,
+        currentUser,
+        async (req: Request, res: Response, next: NextFunction) => {
+            const {
+                body: { refreshToken },
+                currentUser,
+            } = (req as IAuthRequest);
+
+            // TODO: pull list from Redis
+            tokens.push(refreshToken);
+
+            if (refreshToken && tokens.includes(refreshToken)) {
+                const jwt = await currentUser.getJWT();
+
+                const { user: { token } } = jwt;
+
+                return res.status(200).json({
+                    token,
+                    status: 'ok',
+                });
+            }
+
+            res.status(400).json({
+                status: 'failed',
+                message: 'could not refresh token',
+            });
+
+            return next();
+        }
+    )
 };

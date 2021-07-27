@@ -1,11 +1,12 @@
 
 import { Router, Request, Response, NextFunction } from 'express';
+import { UniqueConstraintError } from 'sequelize';
 import Container from 'typedi';
 import { Logger } from 'winston';
 
-import currentUser from '../../middleware/current-user';
-import jwtAuth from '../../middleware/jwt-auth';
-import userAccess from '../../middleware/user-access';
+import currentUser from '../middleware/current-user';
+import jwtAuth from '../middleware/jwt-auth';
+import userAccess from '../middleware/user-access';
 
 import { IUserCreateAttributes, User } from '../../models/user';
 import { EncryptionHelper } from '../../utils/encryption';
@@ -65,7 +66,7 @@ export default (app: Router) => {
         '/:userId/grant-access',
         jwtAuth,
         currentUser,
-        userAccess('super-admin'),
+        userAccess('admin'),
         async (req: Request, res: Response, next: NextFunction) => {
             const logger: Logger = Container.get('logger');
 
@@ -101,7 +102,7 @@ export default (app: Router) => {
                     password = '',
                 } = (req.body as ILoginParams);
 
-                const user = await User.findOne({ where: { email } });
+                const user = await User.scope('login').findOne({ where: { email } });
 
                 if (user) {
                     const verified = await user.verify(password);
@@ -151,21 +152,20 @@ export default (app: Router) => {
                 const user = await User.create(data);
 
                 if (user) {
-                    const verified = await user.verify(password);
+                    return res.status(201).json({ status: 'ok '});
+                } else {
+                    res.status(400).json({ status: 'failed' });
 
-                    if (verified) {
-                        const jwt = await user.getJWT();
-
-                        res.status(200).json(jwt);
-                    } else {
-                        res.status(401).json({
-                            message: 'email and password do not match',
-                        });
-
-                        return next();
-                    }
+                    return next();
                 }
             } catch (err) {
+                if (err instanceof UniqueConstraintError) {
+                    return res.status(403).json({
+                        status: 'failed',
+                        message: 'Duplicate email',
+                    });
+                }
+
                 logger.error('🔥 error: %o', err);
                 return next(err);
             }

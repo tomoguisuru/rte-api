@@ -1,3 +1,5 @@
+import { EventDispatcher } from "event-dispatch";
+
 import {
   Secret,
   sign,
@@ -6,10 +8,15 @@ import {
 
 import { Optional } from 'sequelize/types';
 import {
+  AfterCreate,
+  // BeforeCreate,
   Column,
+  DefaultScope,
+  IsEmail,
   IsUUID,
   Model,
   PrimaryKey,
+  Scopes,
   Table,
 } from 'sequelize-typescript';
 
@@ -28,6 +35,15 @@ interface IUserAttributes {
 
 export interface IUserCreateAttributes extends Optional<IUserAttributes, 'id'> { }
 
+
+@DefaultScope(() => ({
+  attributes: ['id', 'firstName', 'lastName', 'email', 'role'],
+}))
+@Scopes(() => ({
+  login: {
+    attributes: ['id', 'firstName', 'lastName', 'email', 'hash', 'salt'],
+  },
+}))
 @Table
 export class User extends Model<IUserAttributes, IUserCreateAttributes> implements IUserAttributes {
   @IsUUID(4)
@@ -41,6 +57,7 @@ export class User extends Model<IUserAttributes, IUserCreateAttributes> implemen
   @Column
   lastName: string;
 
+  @IsEmail
   @Column
   email: string;
 
@@ -72,7 +89,6 @@ export class User extends Model<IUserAttributes, IUserCreateAttributes> implemen
       email: this.email,
       firstName: this.firstName,
       lastName: this.lastName,
-      // exp: exp.getTime() / 1000,
     };
 
     if (original_owner) {
@@ -81,13 +97,24 @@ export class User extends Model<IUserAttributes, IUserCreateAttributes> implemen
 
     const options: SignOptions = {
       algorithm: 'HS512',
-      expiresIn: '1h',
+      expiresIn: config.jwtSecretTTL,
     };
 
     const token = sign(
       tokenData,
       (config.jwtSecret as Secret),
       options,
+    );
+
+    const refreshOptions: SignOptions = {
+      algorithm: 'HS512',
+      expiresIn: config.jwtRefreshSecretTTL,
+    };
+
+    const refreshToken = sign(
+      { email: this.email },
+      (config.jwtRefreshSecret as Secret),
+      refreshOptions,
     );
 
     return {
@@ -97,6 +124,7 @@ export class User extends Model<IUserAttributes, IUserCreateAttributes> implemen
         firstName: this.firstName,
         lastName: this.lastName,
         token,
+        refreshToken,
       }
     };
   }
@@ -105,12 +133,20 @@ export class User extends Model<IUserAttributes, IUserCreateAttributes> implemen
     return EncryptionHelper.verifyPassword(password, this.hash);
   }
 
-  // protected beforeCreate() {
-
+  // @BeforeCreate
+  // static beforeCreate(instance: User) {
+  //   this.dispatchEvent('beforeCreate', instance);
   // }
 
-  protected afterCreate() {
-    // TODO: Trigger created event
+  @AfterCreate
+  static createEventDispatch(instance: User) {
+    this.dispatchEvent('userCreated', instance);
+  }
+
+  static dispatchEvent(eventType, instance: User) {
+    const eventDispatcher = new EventDispatcher();
+
+    eventDispatcher.dispatch(eventType, instance);
   }
 }
 

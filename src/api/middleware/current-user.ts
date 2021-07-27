@@ -1,6 +1,6 @@
 import { Logger } from 'node-pg-migrate/dist/types';
 import Container from 'typedi';
-import { User } from '../models/user';
+import { User } from '../../models/user';
 
 export default async (req, res, next) => {
     const logger: Logger = Container.get('logger');
