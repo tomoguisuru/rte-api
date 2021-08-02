@@ -21,7 +21,6 @@
     "author": "Brandon Drake",
     "license": "ISC",
     "dependencies": {
-        "accesscontrol": "^2.2.1",
         "argon2": "^0.28.2",
         "body-parser": "^1.19.0",
         "cors": "^2.8.5",
@@ -31,15 +30,17 @@
         "express-jwt": "^6.0.0",
         "fast-rbac": "^2.0.0",
         "jsonwebtoken": "^8.5.1",
-        "node-fetch": "^2.6.0",
+        "moment": "^2.29.1",
+        "node-fetch": "^2.6.1",
         "node-pg-migrate": "^5.10.0",
+        "pako": "^2.0.3",
         "pg": "^8.6.0",
         "pg-hstore": "^2.3.4",
-        "reflect-metadata": "^0.1.13",
         "sequelize": "^6.6.5",
         "socket.io": "^2.3.0",
         "uuid": "^8.3.2",
-        "winston": "^3.3.3"
+        "winston": "^3.3.3",
+        "zlib": "^1.0.5"
     },
     "devDependencies": {
         "@babel/polyfill": "^7.12.1",
@@ -51,6 +52,7 @@
         "@types/jsonwebtoken": "^8.5.4",
         "@types/node": "^16.3.0",
         "@types/node-fetch": "^2.5.7",
+        "@types/pako": "^1.0.2",
         "@types/socket.io": "^2.1.11",
         "@types/uuid": "^8.3.1",
         "@types/validator": "^13.6.3",

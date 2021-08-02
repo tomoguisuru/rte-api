@@ -8,7 +8,7 @@ function initSocketIO(server) {
 
     const logger: Logger = Container.get('logger');
     const container = 'socketIo';
-    const socketIo = new SocketIO(io, logger);
+    const socketIo = new SocketIO(io);
 
     Container.set(container, socketIo);
     logger.info(`✌️ socket.io injected into container as ${container}`);

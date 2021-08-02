@@ -110,15 +110,13 @@ export default (app: Router) => {
                     if (verified) {
                         const jwt = await user.getJWT();
 
-                        res.status(200).json(jwt);
-                    } else {
-                        res.status(401).json({
-                            message: 'email and password do not match',
-                        });
-
-                        return next();
+                        return res.status(200).json(jwt);
                     }
                 }
+
+                return res.status(401).json({
+                    message: 'email and password do not match',
+                });
             } catch (err) {
                 logger.error('🔥 error: %o', err);
                 return next(err);

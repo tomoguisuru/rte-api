@@ -21,10 +21,6 @@ export class Sequelizer {
             }
         }
 
-        console.log('******************')
-        console.log(config['models'])
-        console.log('******************')
-
         this.sequelize = config.url
             ? new Sequelize(config.url, config)
             : new Sequelize(config.database, config.username, config.password, config);

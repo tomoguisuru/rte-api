@@ -30,7 +30,7 @@ export default (app: Router) => {
         '/impersonate/start',
         jwtAuth,
         currentUser,
-        userAccess('super-admin'),
+        userAccess('admin'),
         async (req: Request, res: Response, next: NextFunction) => {
             const logger: Logger = Container.get('logger');
 

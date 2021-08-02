@@ -1,4 +1,5 @@
-import * as crypto from 'crypto';
+import { createHmac } from 'crypto';
+import { Inject, Service } from 'typedi';
 import { Logger } from 'winston';
 
 import config from '../config';
@@ -16,10 +17,14 @@ export interface ISocketIO {
     emit: (payload: ISocketPayload, channelType: string, channelId: string) => void;
 }
 
+@Service()
 export class SocketIO {
-    constructor(private io, private logger) {
-        this.connect();
-    }
+    constructor(
+        private io,
+        @Inject('logger') private logger
+        ) {
+            this.connect();
+        }
 
     private connect() {
         this.io.on('connect', (socket: any) => {
@@ -48,7 +53,7 @@ export class SocketIO {
             logger.info(`Building ${channelType}+${channelId}`);
         }
 
-        const hmac = crypto.createHmac(DIGEST_ALGORITHM, config.socketIoSecret);
+        const hmac = createHmac(DIGEST_ALGORITHM, config.socketIoSecret);
         hmac.update(channel);
 
         return hmac.digest(DIGEST_ENCODING);

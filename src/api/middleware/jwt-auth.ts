@@ -1,8 +1,5 @@
 import jwt from 'express-jwt';
 import config from '../../config';
-import {
-    verify,
-} from 'jsonwebtoken';
 
 const getTokenFromHeader = (req) => {
     const { authorization = '' } = req.headers;
