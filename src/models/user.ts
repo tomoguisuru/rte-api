@@ -1,7 +1,8 @@
 import { EventDispatcher } from "event-dispatch";
+import { RedisClient } from 'redis';
+import Container from 'typedi';
 
 import {
-  Secret,
   sign,
   SignOptions,
 } from 'jsonwebtoken';
@@ -80,6 +81,8 @@ export class User extends Model<IUserAttributes, IUserCreateAttributes> implemen
   }
 
   public getJWT(original_owner = null) {
+    const redisClient: RedisClient = Container.get('redisClient');
+
     var today = new Date();
     var exp = new Date(today);
     exp.setDate(today.getDate() + 60);
@@ -91,31 +94,50 @@ export class User extends Model<IUserAttributes, IUserCreateAttributes> implemen
       lastName: this.lastName,
     };
 
+    const {
+      secret,
+      secretTTL,
+      refreshSecret,
+      refreshSecretTTL,
+    } = config.jwt;
+
     if (original_owner) {
       tokenData['original_owner'] = original_owner;
     }
 
     const options: SignOptions = {
       algorithm: 'HS512',
-      expiresIn: config.jwtSecretTTL,
+      expiresIn: secretTTL,
     };
 
     const token = sign(
       tokenData,
-      (config.jwtSecret as Secret),
+      secret,
       options,
     );
 
     const refreshOptions: SignOptions = {
       algorithm: 'HS512',
-      expiresIn: config.jwtRefreshSecretTTL,
+      expiresIn: refreshSecretTTL,
     };
 
     const refreshToken = sign(
       { email: this.email },
-      (config.jwtRefreshSecret as Secret),
+      refreshSecret,
       refreshOptions,
     );
+
+    const key = `${this.id}#refreshTokens`;
+
+    redisClient.get(key, (_err, resp) => {
+      let refreshTokens = [];
+
+      if (resp) {
+        refreshTokens = JSON.parse(resp);
+      }
+
+      redisClient.set(key, JSON.stringify(refreshTokens));
+    });
 
     return {
       user: {
@@ -129,8 +151,33 @@ export class User extends Model<IUserAttributes, IUserCreateAttributes> implemen
     };
   }
 
-  public async verify(password) {
+  public async verifyPassword(password) {
     return EncryptionHelper.verifyPassword(password, this.hash);
+  }
+
+  public async verifyRefreshToken(token): Promise<boolean> {
+    const redisClient: RedisClient = Container.get('redisClient');
+    const key = `${this.id}#refreshTokens`;
+
+    return new Promise(resolve => {
+      try {
+        redisClient.get(key, (err, resp) => {
+          if (err) {
+            throw err;
+          }
+
+          if (!resp) {
+            throw new Error('No value set');
+          }
+
+          const tokens: string[] = JSON.parse(resp);
+
+          resolve(tokens.includes(token));
+        });
+      } catch {
+        resolve(false);
+      }
+    });
   }
 
   // @BeforeCreate

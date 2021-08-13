@@ -119,13 +119,14 @@ export default (app: Router) => {
             // TODO: pull list from Redis
             tokens.push(refreshToken);
 
-            if (refreshToken && tokens.includes(refreshToken)) {
+            if (refreshToken && currentUser.verifyRefreshToken(refreshToken)) {
                 const jwt = await currentUser.getJWT();
 
                 const { user: { token } } = jwt;
 
                 return res.status(200).json({
                     token,
+                    refreshToken,
                     status: 'ok',
                 });
             }

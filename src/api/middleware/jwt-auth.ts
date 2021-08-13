@@ -13,9 +13,11 @@ const getTokenFromHeader = (req) => {
     throw new Error('token bearer missing in request headers');
 }
 
+const { secret } = config.jwt;
+
 const options: jwt.Options = {
+    secret, // Has to be the same that we used to sign the JWT
     algorithms: ['HS512'],
-    secret: (config.jwtSecret as string), // Has to be the same that we used to sign the JWT
     userProperty: 'token', // this is where the next middleware can find the encoded data generated in services/auth:generateToken -> 'req.token'
     getToken: getTokenFromHeader, // A function to get the auth token from the request
 };

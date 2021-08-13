@@ -14,7 +14,9 @@ export default class UplynkProxyService {
     async request(url, method = 'get', data = null) {
         this.logger.info(`${method.toUpperCase()} ${url}`);
 
-        return this.requestBase(`${config.uplynkDomain}${url}`, method, data)
+        const { domain } = config.uplynk;
+
+        return this.requestBase(`${domain}${url}`, method, data)
     }
 
     async requestBase(url, method = 'get', data = null) {

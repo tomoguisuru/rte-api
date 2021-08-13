@@ -21,7 +21,7 @@ export interface ISocketIO {
 export class SocketIO {
     constructor(
         private io,
-        @Inject('logger') private logger
+        private logger: Logger
         ) {
             this.connect();
         }

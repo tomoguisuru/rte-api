@@ -3,6 +3,7 @@ import { Router, Request, Response, NextFunction } from 'express';
 import { UniqueConstraintError } from 'sequelize';
 import Container from 'typedi';
 import { Logger } from 'winston';
+import { RedisClient } from 'redis';
 
 import currentUser from '../middleware/current-user';
 import jwtAuth from '../middleware/jwt-auth';
@@ -95,6 +96,7 @@ export default (app: Router) => {
         '/login',
         async (req: Request, res: Response, next: NextFunction) => {
             const logger: Logger = Container.get('logger');
+            const redisClient: RedisClient = Container.get('redisClient');
 
             try {
                 const {
@@ -105,10 +107,19 @@ export default (app: Router) => {
                 const user = await User.scope('login').findOne({ where: { email } });
 
                 if (user) {
-                    const verified = await user.verify(password);
+                    const verified = await user.verifyPassword(password);
 
                     if (verified) {
                         const jwt = await user.getJWT();
+
+                        const {
+                            id,
+                            refreshToken,
+                        } = jwt.user;
+
+                        const key = `${id}#refreshTokens`;
+
+                        redisClient.set(key, refreshToken)
 
                         return res.status(200).json(jwt);
                     }

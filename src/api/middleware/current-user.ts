@@ -6,7 +6,6 @@ export default async (req, res, next) => {
     const logger: Logger = Container.get('logger');
 
     try {
-        const container = 'currentUser';
         const { token } = req;
 
         const user = await User.findByPk(token._id);
