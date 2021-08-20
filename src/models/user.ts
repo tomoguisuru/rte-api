@@ -10,9 +10,9 @@ import {
 import { Optional } from 'sequelize/types';
 import {
   AfterCreate,
-  // BeforeCreate,
   Column,
   DefaultScope,
+  HasMany,
   IsEmail,
   IsUUID,
   Model,
@@ -23,6 +23,8 @@ import {
 
 import config from '../config';
 import { EncryptionHelper } from '../utils/encryption';
+
+import { EventStream } from './event-stream';
 
 interface IUserAttributes {
   id: string;
@@ -45,7 +47,9 @@ export interface IUserCreateAttributes extends Optional<IUserAttributes, 'id'> {
     attributes: ['id', 'firstName', 'lastName', 'email', 'hash', 'salt'],
   },
 }))
-@Table
+@Table({
+  paranoid: true,
+})
 export class User extends Model<IUserAttributes, IUserCreateAttributes> implements IUserAttributes {
   @IsUUID(4)
   @PrimaryKey
@@ -70,6 +74,9 @@ export class User extends Model<IUserAttributes, IUserCreateAttributes> implemen
 
   @Column
   role: string;
+
+  @HasMany(() => EventStream)
+  eventStreams: EventStream[];
 
   public async setPassword(password) {
     const { hash, salt } = await EncryptionHelper.encrypt(password);

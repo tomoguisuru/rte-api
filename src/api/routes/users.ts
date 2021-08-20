@@ -5,11 +5,12 @@ import Container from 'typedi';
 import { Logger } from 'winston';
 import { RedisClient } from 'redis';
 
-import currentUser from '../middleware/current-user';
+import { currentUser, IAuthRequest } from '../middleware/current-user';
 import jwtAuth from '../middleware/jwt-auth';
 import userAccess from '../middleware/user-access';
 
 import { IUserCreateAttributes, User } from '../../models/user';
+
 import { EncryptionHelper } from '../../utils/encryption';
 
 const route = Router();
@@ -35,56 +36,21 @@ export default (app: Router) => {
     app.use(ENDPOINT, route);
 
     route.get(
-        '/:userId',
+        '/',
         jwtAuth,
         currentUser,
+        userAccess('users:read'),
         async (req: Request, res: Response, next: NextFunction) => {
             const logger: Logger = Container.get('logger');
 
             try {
-                const { userId } = req.params;
-
-                const user = await User.findByPk(userId);
-
-                if (!user) {
-                    res.status(401);
-                    return next();
-                }
+                const users = await User.findAll();
 
                 const data = {
-                    user,
+                    users,
                 }
 
                 return res.status(200).json(data);
-            } catch (err) {
-                logger.error('🔥 error: %o', err);
-                return next(err);
-            }
-        }
-    );
-
-    route.put(
-        '/:userId/grant-access',
-        jwtAuth,
-        currentUser,
-        userAccess('admin'),
-        async (req: Request, res: Response, next: NextFunction) => {
-            const logger: Logger = Container.get('logger');
-
-            try {
-                const {
-                    role = '',
-                } = (req.body as IRoleParams);
-                const { userId } = req.params;
-
-                const user = await User.findByPk(userId);
-
-                if (!user) {
-                    res.status(401);
-                    return next();
-                }
-
-                user.update({ role });
             } catch (err) {
                 logger.error('🔥 error: %o', err);
                 return next(err);
@@ -135,6 +101,27 @@ export default (app: Router) => {
         }
     );
 
+    route.get(
+        '/me',
+        jwtAuth,
+        currentUser,
+        userAccess('publisher:read'),
+        async (req: IAuthRequest, res: Response, next: NextFunction) => {
+            const logger: Logger = Container.get('logger');
+
+            try {
+                const {
+                    currentUser,
+                } = req;
+
+                return res.status(200).json({ user: currentUser });
+            } catch (err) {
+                logger.error('🔥 error: %o', err);
+                return next(err);
+            }
+        }
+    );
+
     route.post(
         '/register',
         async (req: Request, res: Response, next: NextFunction) => {
@@ -175,6 +162,64 @@ export default (app: Router) => {
                     });
                 }
 
+                logger.error('🔥 error: %o', err);
+                return next(err);
+            }
+        }
+    );
+
+    route.get(
+        '/:userId',
+        jwtAuth,
+        currentUser,
+        async (req: Request, res: Response, next: NextFunction) => {
+            const logger: Logger = Container.get('logger');
+
+            try {
+                const { userId } = req.params;
+
+                const user = await User.findByPk(userId);
+
+                if (!user) {
+                    res.status(401);
+                    return next();
+                }
+
+                const data = {
+                    user,
+                }
+
+                return res.status(200).json(data);
+            } catch (err) {
+                logger.error('🔥 error: %o', err);
+                return next(err);
+            }
+        }
+    );
+
+    route.put(
+        '/:userId/grant-access',
+        jwtAuth,
+        currentUser,
+        userAccess('users:write'),
+        async (req: Request, res: Response, next: NextFunction) => {
+            const logger: Logger = Container.get('logger');
+
+            try {
+                const {
+                    role = '',
+                } = (req.body as IRoleParams);
+                const { userId } = req.params;
+
+                const user = await User.findByPk(userId);
+
+                if (!user) {
+                    res.status(401);
+                    return next();
+                }
+
+                user.update({ role });
+            } catch (err) {
                 logger.error('🔥 error: %o', err);
                 return next(err);
             }

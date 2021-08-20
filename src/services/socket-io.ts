@@ -1,5 +1,5 @@
 import { createHmac } from 'crypto';
-import { Inject, Service } from 'typedi';
+import { Service } from 'typedi';
 import { Logger } from 'winston';
 
 import config from '../config';

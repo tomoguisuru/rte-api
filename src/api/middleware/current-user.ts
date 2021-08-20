@@ -1,8 +1,14 @@
+import { Request, Response, NextFunction } from 'express';
 import { Logger } from 'node-pg-migrate/dist/types';
 import Container from 'typedi';
 import { User } from '../../models/user';
 
-export default async (req, res, next) => {
+export interface IAuthRequest extends Request {
+    currentUser?: User;
+    token?: any;
+}
+
+export async function currentUser(req: IAuthRequest, res: Response, next: NextFunction) {
     const logger: Logger = Container.get('logger');
 
     try {
@@ -11,15 +17,16 @@ export default async (req, res, next) => {
         const user = await User.findByPk(token._id);
 
         if (!user) {
-            return res.status(401).end('User not found')
+            return res.status(401).end('User not found');
         } else {
             req.currentUser = user;
+            Container.set('currentUser', User);
 
             return next();
         }
     } catch (err) {
         logger.error(err.message);
 
-        res.status(400);
+        return res.status(500).end('Unknown error');
     }
 }

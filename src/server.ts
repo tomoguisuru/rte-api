@@ -1,3 +1,6 @@
+// Used for typedi
+import 'reflect-metadata';
+
 import config from './config';
 import express from 'express';
 import loaders from './loaders';

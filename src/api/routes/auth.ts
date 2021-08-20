@@ -3,22 +3,17 @@ import { Router, Request, Response, NextFunction } from 'express';
 import Container from 'typedi';
 import { Logger } from 'winston';
 
-import currentUser from '../middleware/current-user';
+import { currentUser, IAuthRequest } from '../middleware/current-user';
 import userAccess from '../middleware/user-access';
+import jwtAuth from '../middleware/jwt-auth';
 
 import { User } from '../../models/user';
-import jwtAuth from '../middleware/jwt-auth';
 
 const route = Router();
 const ENDPOINT = '/auth';
 
 interface IImpersonateParams {
     userId: string;
-}
-
-interface IAuthRequest extends Request {
-    currentUser: User;
-    token: any;
 }
 
 const tokens: string[] = [];
@@ -31,7 +26,7 @@ export default (app: Router) => {
         jwtAuth,
         currentUser,
         userAccess('admin'),
-        async (req: Request, res: Response, next: NextFunction) => {
+        async (req: IAuthRequest, res: Response, next: NextFunction) => {
             const logger: Logger = Container.get('logger');
 
             try {
@@ -42,11 +37,11 @@ export default (app: Router) => {
                 const {
                     currentUser,
                     token: { original_owner },
-                } = (req as IAuthRequest);
+                } = req;
 
                 const user = await User.findByPk(userId);
 
-                if (!user) {
+                if (!user || !currentUser) {
                     res.status(401);
                     return next();
                 }
@@ -70,13 +65,13 @@ export default (app: Router) => {
         '/impersonate/stop',
         jwtAuth,
         currentUser,
-        async (req: Request, res: Response, next: NextFunction) => {
+        async (req: IAuthRequest, res: Response, next: NextFunction) => {
             const logger: Logger = Container.get('logger');
 
             try {
                 const {
                     token: { original_owner },
-                } = (req as IAuthRequest);
+                } = req;
 
                 if (!original_owner) {
                     res.status(400);
@@ -110,33 +105,37 @@ export default (app: Router) => {
         '/token/refresh',
         jwtAuth,
         currentUser,
-        async (req: Request, res: Response, next: NextFunction) => {
-            const {
-                body: { refreshToken },
-                currentUser,
-            } = (req as IAuthRequest);
+        async (req: IAuthRequest, res: Response, next: NextFunction) => {
+            try {
+                const {
+                    body: { refreshToken },
+                    currentUser,
+                } = req;
 
-            // TODO: pull list from Redis
-            tokens.push(refreshToken);
+                if (!currentUser) {
+                    throw new Error('User not found');
+                }
 
-            if (refreshToken && currentUser.verifyRefreshToken(refreshToken)) {
-                const jwt = await currentUser.getJWT();
+                // Verifies that refresh token exists within collection.
+                tokens.push(refreshToken);
 
-                const { user: { token } } = jwt;
+                if (refreshToken && currentUser.verifyRefreshToken(refreshToken)) {
+                    const jwt = await currentUser.getJWT();
 
-                return res.status(200).json({
-                    token,
-                    refreshToken,
-                    status: 'ok',
+                    const { user: { token } } = jwt;
+
+                    return res.status(200).json({
+                        token,
+                        refreshToken,
+                        status: 'ok',
+                    });
+                }
+            } catch (err) {
+                return res.status(400).json({
+                    status: 'failed',
+                    message: 'could not refresh token',
                 });
             }
-
-            res.status(400).json({
-                status: 'failed',
-                message: 'could not refresh token',
-            });
-
-            return next();
         }
     )
 };
