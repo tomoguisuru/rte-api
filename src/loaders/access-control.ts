@@ -7,7 +7,7 @@ const options: Options = {
         },
         publisher: {
             can: [{
-                name: 'publisher:read',
+                name: 'publisher:*',
                 when: async ctx => {
                     return ctx.ownerId === ctx.userId;
                 },

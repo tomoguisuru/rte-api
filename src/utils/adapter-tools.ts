@@ -42,3 +42,44 @@ export function camelizeItems(resp, keyMap = {}, include: string[] = []) {
 
     return resp;
 }
+
+interface ISerializableOptions {
+    keyMap?: {};
+    camelize?: boolean;
+    prune?: string[];
+}
+
+export function serialize(data = {}, options?: ISerializableOptions) {
+    if (!(typeof (data) == 'object')) {
+        return data;
+    }
+
+    const keys = Object.keys(data);
+
+    if (keys.length > 0) {
+        return keys.reduce((rv, key) => {
+            let value = data[key];
+            let _key = (options?.camelize ? camelize(key, true) : key);
+
+            if (options?.prune?.includes(_key)) {
+                return rv;
+            }
+
+            if (options?.keyMap) {
+                _key = options.keyMap[_key] || _key;
+            }
+
+            if (Array.isArray(value)) {
+                value = value.map(d => serialize(d, options));
+            } else {
+                value = serialize(value, options)
+            }
+
+            rv[_key] = value;
+
+            return rv
+        }, {});
+    }
+
+    return data;
+}

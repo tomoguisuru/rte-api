@@ -129,7 +129,10 @@ export class User extends Model<IUserAttributes, IUserCreateAttributes> implemen
     };
 
     const refreshToken = sign(
-      { email: this.email },
+      {
+        _id: this.id,
+        email: this.email,
+      },
       refreshSecret,
       refreshOptions,
     );
@@ -147,14 +150,8 @@ export class User extends Model<IUserAttributes, IUserCreateAttributes> implemen
     });
 
     return {
-      user: {
-        id: this.id,
-        email: this.email,
-        firstName: this.firstName,
-        lastName: this.lastName,
-        token,
-        refreshToken,
-      }
+      token,
+      refreshToken,
     };
   }
 

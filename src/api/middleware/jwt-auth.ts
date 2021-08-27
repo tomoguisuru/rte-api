@@ -2,12 +2,19 @@ import jwt from 'express-jwt';
 import config from '../../config';
 
 const getTokenFromHeader = (req) => {
-    const { authorization = '' } = req.headers;
-
+    const { headers: { authorization = '' }} = req;
     const [authType, token] = authorization.split(' ')
 
     if (authType === 'Bearer') {
         return token;
+    }
+
+    const {
+        body,
+    } = req;
+
+    if (body.token) {
+        return body.token;
     }
 
     throw new Error('token bearer missing in request headers');
@@ -16,10 +23,10 @@ const getTokenFromHeader = (req) => {
 const { secret } = config.jwt;
 
 const options: jwt.Options = {
-    secret, // Has to be the same that we used to sign the JWT
+    secret,
     algorithms: ['HS512'],
-    userProperty: 'token', // this is where the next middleware can find the encoded data generated in services/auth:generateToken -> 'req.token'
-    getToken: getTokenFromHeader, // A function to get the auth token from the request
+    getToken: getTokenFromHeader,
+    userProperty: 'token',
 };
 
 export default jwt(options);

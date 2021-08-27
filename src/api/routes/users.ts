@@ -79,11 +79,10 @@ export default (app: Router) => {
                         const jwt = await user.getJWT();
 
                         const {
-                            id,
                             refreshToken,
-                        } = jwt.user;
+                        } = jwt;
 
-                        const key = `${id}#refreshTokens`;
+                        const key = `${user.id}#refreshTokens`;
 
                         redisClient.set(key, refreshToken)
 

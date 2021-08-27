@@ -61,7 +61,7 @@ export default ({ app }: { app: express.Application }) => {
     });
 
     app.use((err, req, res, next) => {
-        console.log('Uh ohs...', err);
+        logger.error(err.message);
 
         res.status(err.status || 500);
         res.json({

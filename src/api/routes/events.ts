@@ -110,6 +110,61 @@ export default (app: Router) => {
     );
 
     route.get(
+        '/:eventId/manifest',
+        async (req: Request, res: Response, next: NextFunction) => {
+            const logger: Logger = Container.get('logger');
+            const eventService: EventService = Container.get(EventService);
+
+            try {
+                const {
+                    params: { eventId },
+                    query,
+                } = req;
+
+                const data = await eventService.getManifest(eventId, query);
+
+                return res.status(200).json(data);
+            } catch (err) {
+
+                logger.error('🔥 error: %o', err);
+
+                return res.status(500).json({
+                    status: 'failed',
+                    message: err.message,
+                });
+            }
+        }
+    );
+
+    route.post(
+        '/:eventId/token/:tokenType',
+        async (req: Request, res: Response, next: NextFunction) => {
+            const logger: Logger = Container.get('logger');
+            const eventService: EventService = Container.get(EventService);
+
+            try {
+                const {
+                    params: {
+                        eventId,
+                        tokenType,
+                    },
+                } = req;
+
+                const data = await eventService.getToken(eventId, tokenType, req.body);
+
+                return res.status(200).json(data);
+            } catch (err) {
+                logger.error('🔥 error: %o', err);
+
+                return res.status(500).json({
+                    status: 'failed',
+                    message: err.message,
+                });
+            }
+        }
+    );
+
+    route.get(
         '/:eventId/event-streams/:eventStreamId',
         jwtAuth,
         currentUser,

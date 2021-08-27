@@ -8,6 +8,10 @@ export function paramsToQueryString(params = {}) {
 }
 
 export function buildUrl(url, query = {}) {
+    if (Object.keys(query).length === 0) {
+        return url;
+    }
+
     const qs = paramsToQueryString(query);
 
     return [

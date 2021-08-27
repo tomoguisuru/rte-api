@@ -6,6 +6,7 @@ import { Logger } from 'winston';
 import { currentUser, IAuthRequest } from '../middleware/current-user';
 import userAccess from '../middleware/user-access';
 import jwtAuth from '../middleware/jwt-auth';
+import jwtRefreshAuth from '../middleware/jwt-refresh-auth';
 
 import { User } from '../../models/user';
 
@@ -103,9 +104,11 @@ export default (app: Router) => {
 
     route.post(
         '/token/refresh',
-        jwtAuth,
+        jwtRefreshAuth,
         currentUser,
         async (req: IAuthRequest, res: Response, next: NextFunction) => {
+            const logger: Logger = Container.get('logger');
+
             try {
                 const {
                     body: { refreshToken },
@@ -116,21 +119,16 @@ export default (app: Router) => {
                     throw new Error('User not found');
                 }
 
-                // Verifies that refresh token exists within collection.
-                tokens.push(refreshToken);
-
                 if (refreshToken && currentUser.verifyRefreshToken(refreshToken)) {
                     const jwt = await currentUser.getJWT();
 
-                    const { user: { token } } = jwt;
-
-                    return res.status(200).json({
-                        token,
-                        refreshToken,
-                        status: 'ok',
-                    });
+                    return res.status(200).json(jwt);
                 }
+
+                throw new Error('Unable to verify token');
             } catch (err) {
+                logger.error(err.message)
+
                 return res.status(400).json({
                     status: 'failed',
                     message: 'could not refresh token',

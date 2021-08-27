@@ -1,4 +1,4 @@
-import { Inject, Service } from 'typedi';
+import Container, { Service } from 'typedi';
 import { Logger } from 'winston';
 
 import UplynkProxyService from './uplynk-proxy';
@@ -18,34 +18,32 @@ export interface IStreamOptions {
 }
 
 const keyMap = {
-    alias: 'channelAlias',
-    externalChannelId: 'channelId',
-    externalName: 'channelName',
-    rtsEvent: 'eventId',
+    '@type': 'model_type',
+    rts_event: 'event_id',
+    external_name: 'channel_name',
+    external_channel_id: 'channel_id',
 }
 
-const include = [
-    'channelAlias',
-    'channelId',
-    'channelName',
-    'desc',
-    'eventId',
-    'externalId',
-    'id',
-    'title',
-    'type',
-];
+const prune = [
+    '@id',
+    'owner',
+    'rts_credentials',
+    'stream_type',
+    'created',
+]
+
 
 @Service()
 export default class EventService {
     constructor(
-        @Inject('logger') private logger: Logger,
-        @Inject('currentUser') private currentUser: User,
+        private logger: Logger,
+        // @Inject('currentUser') private currentUser: User,
         private proxyService: UplynkProxyService,
     ) {}
 
     public async assignStream(userId: string, eventId: string, streamId: string): Promise<boolean> {
         try {
+            const currentUser: User = Container.get('currentUser');
             let eventStream = await EventStream.findOne({
                 where: {
                     eventId,
@@ -59,7 +57,7 @@ export default class EventService {
                 eventStream = await EventStream.create({
                     eventId,
                     streamId,
-                    ownerId: this.currentUser.id,
+                    ownerId: currentUser.id,
                     userId,
                 });
             }
@@ -74,11 +72,12 @@ export default class EventService {
 
     public async createStream(userId: string, eventId: string, options: IStreamOptions): Promise<any> {
         const url = buildUrl(`/rts/events/${eventId}/streams`);
+        const currentUser: User = Container.get('currentUser');
 
         const resp = await this.proxyService.request({
             keyMap,
-            include,
             url,
+            prune,
             method: 'post',
             data: options,
         });
@@ -92,7 +91,7 @@ export default class EventService {
         const eventStreamOptions: IEventStreamCreateAttributes = {
             eventId,
             userId,
-            ownerId: this.currentUser.id,
+            ownerId: currentUser.id,
             streamId: stream.id,
         }
 
@@ -101,12 +100,24 @@ export default class EventService {
         return stream;
     }
 
+    public async performAction(streamId: string, action: string) {
+        const url = buildUrl(`/rts/streams/${streamId}/${action}`);
+
+        return this.proxyService.request({
+            url,
+            data: {
+                timestamp: 0,
+            },
+            method: 'post',
+        });
+    }
+
     public async getStreams(eventId: string, query: any = {}) {
         const url = buildUrl(`/rts/events/${eventId}/streams`, query);
 
         return await this.proxyService.request({
             keyMap,
-            include,
+            prune,
             url,
         });
     }

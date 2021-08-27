@@ -62,6 +62,7 @@ export default (app: Router) => {
 
                 for (const eventId in eventMap) {
                     const streamResp = await streamService.getStreams(eventId);
+
                     const streams = streamResp.items;
                     const streamIds = eventMap[eventId];
 
@@ -84,56 +85,87 @@ export default (app: Router) => {
         },
     );
 
-    route.get(
-        '/:streamId',
+    // route.get(
+    //     '/:eventId',
+    //     jwtAuth,
+    //     currentUser,
+    //     userAccess('events:read'),
+    //     async (req: Request, res: Response, next: NextFunction) => {
+    //         const logger: Logger = Container.get('logger');
+    //         const eventService: EventService = Container.get(EventService);
+
+    //         try {
+    //             const {
+    //                 params: { eventId },
+    //                 query,
+    //             } = req;
+
+    //             const data = await eventService.getEvent(eventId, query);
+
+    //             return res.status(200).json(data);
+    //         } catch (err) {
+
+    //             logger.error('🔥 error: %o', err);
+
+    //             return res.status(500).json({
+    //                 status: 'failed',
+    //                 message: err.message,
+    //             });
+    //         }
+    //     }
+    // );
+
+    // route.get(
+    //     '/:eventId/streams',
+    //     jwtAuth,
+    //     currentUser,
+    //     userAccess('events:read'),
+    //     async (req: Request, res: Response, next: NextFunction) => {
+    //         const logger: Logger = Container.get('logger');
+    //         const streamService: StreamService = Container.get(StreamService);
+
+    //         try {
+    //             const {
+    //                 params: { eventId },
+    //                 query,
+    //             } = req;
+
+    //             const data = await streamService.getStreams(eventId, query);
+
+    //             return res.status(200).json(data);
+    //         } catch (err) {
+
+    //             logger.error('🔥 error: %o', err);
+
+    //             return res.status(500).json({
+    //                 status: 'failed',
+    //                 message: err.message,
+    //             });
+    //         }
+    //     }
+    // );
+
+    route.post(
+        '/:streamId/:action',
         jwtAuth,
         currentUser,
-        userAccess('events:read'),
-        async (req: Request, res: Response, next: NextFunction) => {
-            const logger: Logger = Container.get('logger');
-            const eventService: EventService = Container.get(EventService);
-
-            try {
-                const {
-                    params: { eventId },
-                    query,
-                } = req;
-
-                const data = await eventService.getEvent(eventId, query);
-
-                return res.status(200).json(data);
-            } catch (err) {
-
-                logger.error('🔥 error: %o', err);
-
-                return res.status(500).json({
-                    status: 'failed',
-                    message: err.message,
-                });
-            }
-        }
-    );
-
-    route.get(
-        '/:eventId/streams',
-        jwtAuth,
-        currentUser,
-        userAccess('events:read'),
+        userAccess('publisher:write'),
         async (req: Request, res: Response, next: NextFunction) => {
             const logger: Logger = Container.get('logger');
             const streamService: StreamService = Container.get(StreamService);
 
             try {
                 const {
-                    params: { eventId },
-                    query,
+                    params: {
+                        action,
+                        streamId,
+                    },
                 } = req;
 
-                const data = await streamService.getStreams(eventId, query);
+                const data = await streamService.performAction(streamId, action);
 
-                return res.status(200).json(data);
+                return res.status(204).json(data);
             } catch (err) {
-
                 logger.error('🔥 error: %o', err);
 
                 return res.status(500).json({

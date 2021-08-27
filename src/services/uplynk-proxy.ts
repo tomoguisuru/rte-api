@@ -5,7 +5,7 @@ import fetch from 'node-fetch';
 import config from '../config';
 
 import AuthParams from '../utils/auth-params';
-import { camelizeData, camelizeItems } from '../utils/adapter-tools';
+import { camelizeData, camelizeItems, serialize } from '../utils/adapter-tools';
 
 interface IListResponse {
     items: any[];
@@ -14,7 +14,7 @@ interface IListResponse {
 
 interface IRequest {
     data?: any;
-    include?: string[];
+    prune?: string[];
     keyMap?: any;
     method?: string;
     url: string;
@@ -45,9 +45,9 @@ export default class UplynkProxyService {
     async requestBase(req: IRequest): Promise<IListResponse | any> {
         const {
             data,
-            include = [],
             keyMap,
             method = 'get',
+            prune,
             url,
         } = req;
 
@@ -56,12 +56,12 @@ export default class UplynkProxyService {
 
         try {
             const json = await resp.json();
+            const options = {
+                keyMap,
+                prune,
+            };
 
-            if (!('items' in json)) {
-                return camelizeData(json, keyMap, include);
-            } else {
-                return camelizeItems(json, keyMap, include) as IListResponse;
-            }
+            return serialize(json, options);
         } catch (err) {
             this.logger.error(err.message);
 
@@ -81,8 +81,9 @@ export default class UplynkProxyService {
         }
 
         if (data) {
-            headers['body'] = JSON.stringify(data);
-            headers['Content-Length'] = data.length;
+            const jsonData = JSON.stringify(data);
+            request['body'] = jsonData;
+            headers['Content-Length'] = jsonData.length;
             headers['Content-Type'] = 'application/json';
         }
 
