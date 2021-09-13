@@ -58,7 +58,7 @@ export default (app: Router) => {
                 }, {});
 
                 const items: any[] = [];
-                const included: any[] = [];
+                const events: any[] = [];
 
                 for (const eventId in eventMap) {
                     const streamResp = await streamService.getStreams(eventId);
@@ -73,77 +73,17 @@ export default (app: Router) => {
                     const filtered = streams.filter(s => streamIds.includes(s.id));
                     const event = await eventService.getEvent(eventId);
 
-                    included.push(event);
+                    events.push(event);
                     items.push(...filtered);
                 }
 
-                return res.status(200).json({ items, included });
+                return res.status(200).json({ streams: items, events });
             } catch (err) {
                 logger.error('🔥 error: %o', err);
                 return next(err);
             }
         },
     );
-
-    // route.get(
-    //     '/:eventId',
-    //     jwtAuth,
-    //     currentUser,
-    //     userAccess('events:read'),
-    //     async (req: Request, res: Response, next: NextFunction) => {
-    //         const logger: Logger = Container.get('logger');
-    //         const eventService: EventService = Container.get(EventService);
-
-    //         try {
-    //             const {
-    //                 params: { eventId },
-    //                 query,
-    //             } = req;
-
-    //             const data = await eventService.getEvent(eventId, query);
-
-    //             return res.status(200).json(data);
-    //         } catch (err) {
-
-    //             logger.error('🔥 error: %o', err);
-
-    //             return res.status(500).json({
-    //                 status: 'failed',
-    //                 message: err.message,
-    //             });
-    //         }
-    //     }
-    // );
-
-    // route.get(
-    //     '/:eventId/streams',
-    //     jwtAuth,
-    //     currentUser,
-    //     userAccess('events:read'),
-    //     async (req: Request, res: Response, next: NextFunction) => {
-    //         const logger: Logger = Container.get('logger');
-    //         const streamService: StreamService = Container.get(StreamService);
-
-    //         try {
-    //             const {
-    //                 params: { eventId },
-    //                 query,
-    //             } = req;
-
-    //             const data = await streamService.getStreams(eventId, query);
-
-    //             return res.status(200).json(data);
-    //         } catch (err) {
-
-    //             logger.error('🔥 error: %o', err);
-
-    //             return res.status(500).json({
-    //                 status: 'failed',
-    //                 message: err.message,
-    //             });
-    //         }
-    //     }
-    // );
 
     route.post(
         '/:streamId/:action',

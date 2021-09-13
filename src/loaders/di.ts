@@ -4,6 +4,7 @@ import ac from './access-control';
 import redisClient from './redis-client';
 import LoggerInstance from './logger';
 import sequelize from './sequelize';
+import jobs from './jobs';
 // import MirageInstance from './mirage';
 
 export default () => {
@@ -20,6 +21,9 @@ export default () => {
 
         Container.set('sequelize', sequelize);
         LoggerInstance.info('✌️ Sequelize injected into container as sequelize');
+
+        Container.set('jobs', jobs());
+        LoggerInstance.info('✌️ Jobs injected into container as jobs');
 
         if (config.mirage.enabled) {
             // Container.set('server', MirageInstance);

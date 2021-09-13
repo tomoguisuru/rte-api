@@ -4,7 +4,6 @@ import {
   BelongsTo,
   Column,
   ForeignKey,
-  Index,
   IsUUID,
   Model,
   PrimaryKey,
@@ -15,6 +14,8 @@ import {
 import { Optional } from 'sequelize/types';
 
 import { User } from './user';
+import { Event } from './event';
+import { Stream } from './stream';
 
 interface IEventStreamAttributes {
   id: string;
@@ -25,7 +26,6 @@ interface IEventStreamAttributes {
 }
 
 export interface IEventStreamCreateAttributes extends Optional<IEventStreamAttributes, 'id'> {}
-
 
 const UserStreamIndex = createIndexDecorator({
   // index options
@@ -55,10 +55,12 @@ export class EventStream extends Model<IEventStreamAttributes, IEventStreamCreat
   ownerId: string;
 
   @UserStreamIndex
+  @ForeignKey(() => Event)
   @Column
   eventId: string;
 
   @UserStreamIndex
+  @ForeignKey(() => Stream)
   @Column
   streamId: string;
 
@@ -67,6 +69,12 @@ export class EventStream extends Model<IEventStreamAttributes, IEventStreamCreat
 
   @BelongsTo(() => User, 'ownerId')
   owner: User;
+
+  @BelongsTo(() => Event, 'eventId')
+  event: Event;
+
+  @BelongsTo(() => Stream, 'streamId')
+  stream: Stream;
 
   @AfterCreate
   static createEventDispatch(instance: EventStream) {

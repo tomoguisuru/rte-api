@@ -17,6 +17,23 @@ export interface IStreamOptions {
     title: string;
 }
 
+export interface IStream {
+    alias: string;
+    channel_id: string,
+    channel_name: string,
+    deleted?: string;
+    event_id: string;
+    id: string;
+    stream_quality: 'hd' | 'sd';
+    stream_type: 'webcam' | 'audio-only' | 'video-only';
+    title: string;
+}
+
+export interface IStreamResponse {
+    items: IStream[];
+    total_items: number;
+}
+
 const keyMap = {
     '@type': 'model_type',
     rts_event: 'event_id',
@@ -112,7 +129,7 @@ export default class EventService {
         });
     }
 
-    public async getStreams(eventId: string, query: any = {}) {
+    public async getStreams(eventId: string, query: any = {}): Promise<IStreamResponse> {
         const url = buildUrl(`/rts/events/${eventId}/streams`, query);
 
         return await this.proxyService.request({

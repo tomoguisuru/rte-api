@@ -1,11 +1,12 @@
 import { Inject, Service } from 'typedi';
 import { Logger } from 'winston';
 import fetch from 'node-fetch';
+import { AbortController } from 'node-abort-controller';
 
 import config from '../config';
 
 import AuthParams from '../utils/auth-params';
-import { camelizeData, camelizeItems, serialize } from '../utils/adapter-tools';
+import { serialize } from '../utils/adapter-tools';
 
 interface IListResponse {
     items: any[];
@@ -22,6 +23,10 @@ interface IRequest {
 
 @Service()
 export default class UplynkProxyService {
+    public requestTimeout = 10 * 1000;
+
+    private abortTimeout;
+
     constructor(
         @Inject('logger') private logger: Logger,
     ) {}
@@ -54,6 +59,12 @@ export default class UplynkProxyService {
         const request = this._buildRequest(method, data);
         const resp = await fetch(url, request);
 
+        if (this.abortTimeout) {
+            clearTimeout(this.abortTimeout);
+
+            this.abortTimeout = null;
+        }
+
         try {
             const json = await resp.json();
             const options = {
@@ -61,7 +72,9 @@ export default class UplynkProxyService {
                 prune,
             };
 
-            return serialize(json, options);
+            const serialized = serialize(json, options);
+
+            return serialized;
         } catch (err) {
             this.logger.error(err.message);
 
@@ -75,9 +88,16 @@ export default class UplynkProxyService {
             'Authorization': `${authParams.msg} ${authParams.sig}`,
         };
 
+        const abortController = new AbortController();
+        this.abortTimeout = setTimeout(
+            () => abortController.abort(),
+            this.requestTimeout,
+        );
+
         const request = {
             method,
             headers,
+            signal: abortController.signal,
         }
 
         if (data) {
