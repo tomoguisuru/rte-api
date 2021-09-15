@@ -55,6 +55,37 @@ export default class EventService {
         });
     }
 
+    public async fetchEvents(query: any = {}): Promise<IEvent[]> {
+        query = Object.assign({
+            page: 1,
+            page_size: 20,
+        }, query);
+
+        const resp = await this.getEvents(query);
+        const {
+            items = [],
+            total_items,
+         } = resp;
+
+        let events: IEvent[] = items;
+
+        const {
+            page,
+            page_size,
+        } = query;
+
+        const loaded = page * page_size;
+
+        if (loaded < total_items) {
+            query.page = query.page + 1;
+            const _events = await this.fetchEvents(query);
+
+            events = events.concat(_events);
+        }
+
+        return events;
+    }
+
     public async getAllEvents(query: any = {}): Promise<IEvent[]> {
 
 
@@ -70,8 +101,6 @@ export default class EventService {
          } = resp;
 
         let events: IEvent[] = items;
-
-        console.log('Events: ', items.length, events.length)
 
         const {
             page,
@@ -116,6 +145,8 @@ export default class EventService {
             method: 'post',
             prune: [ '@id', '@type'],
         });
+
+        console.log('RESP: ', resp)
 
         const { token = '' } = resp
 

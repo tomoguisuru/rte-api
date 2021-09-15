@@ -1,4 +1,14 @@
-import { camelize } from 'inflection';
+import { camelize, underscore } from 'inflection';
+
+interface ISerializableOptions {
+    keyMap?: {};
+    camelize?: boolean;
+    prune?: string[];
+}
+
+export interface IResponse {
+    total_items: number;
+}
 
 export function camelizeData(data, keyMap = {}, include: string[] = []) {
     if (!data) {
@@ -43,23 +53,27 @@ export function camelizeItems(resp, keyMap = {}, include: string[] = []) {
     return resp;
 }
 
-interface ISerializableOptions {
-    keyMap?: {};
-    camelize?: boolean;
-    prune?: string[];
-}
-
-export function serialize(data = {}, options?: ISerializableOptions) {
-    if (!(typeof (data) == 'object')) {
+export function serialize<T>(data: T, options?: ISerializableOptions): T {
+    if (!data || !(typeof (data) == 'object')) {
         return data;
     }
 
-    const keys = Object.keys(data);
+    let keys;
+
+    try {
+        keys = Object.keys(data);
+    } catch (err) {
+        console.log(err);
+        console.log(data);
+    }
+
 
     if (keys.length > 0) {
         return keys.reduce((rv, key) => {
             let value = data[key];
-            let _key = (options?.camelize ? camelize(key, true) : key);
+            let _key = options?.camelize
+                ? camelize(key, true)
+                : underscore(key);``
 
             if (options?.prune?.includes(_key)) {
                 return rv;
@@ -78,7 +92,7 @@ export function serialize(data = {}, options?: ISerializableOptions) {
             rv[_key] = value;
 
             return rv
-        }, {});
+        }, ({} as T));
     }
 
     return data;

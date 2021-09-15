@@ -23,7 +23,7 @@ interface IRequest {
 
 @Service()
 export default class UplynkProxyService {
-    public requestTimeout = 10 * 1000;
+    public requestTimeout = 20 * 1000;
 
     private abortTimeout;
 

@@ -31,9 +31,16 @@ class Jobs {
 export default () => {
     const jobs = new Jobs();
 
-    // jobs.registerCronJob('events', new SyncEvents());
-    // jobs.registerCronJob('streams', new SyncStreams());
+    jobs.registerCronJob('events', new SyncEvents());
+    jobs.registerCronJob('streams', new SyncStreams());
+
+    // NOTE: If you don't want to wait for the cron job, just comment out this
+    //       and it will sync when the server starts
+    // Object.keys(jobs.cronJobs).forEach(async (key) => {
+    //     const job = jobs.cronJobs[key];
+
+    //     await job.run();
+    // });
 
     return jobs;
 }
-

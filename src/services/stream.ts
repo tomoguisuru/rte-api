@@ -5,10 +5,7 @@ import UplynkProxyService from './uplynk-proxy';
 
 import { buildUrl } from '../utils/url-tools';
 
-import {
-    EventStream,
-    IEventStreamCreateAttributes,
-} from '../models/event-stream';
+import { EventStream } from '../models/event-stream';
 import { User } from '../models/user';
 
 export interface IStreamOptions {
@@ -36,17 +33,17 @@ export interface IStreamResponse {
 
 const keyMap = {
     '@type': 'model_type',
-    rts_event: 'event_id',
-    external_name: 'channel_name',
     external_channel_id: 'channel_id',
+    external_name: 'channel_name',
+    rts_event: 'event_id',
 }
 
 const prune = [
     '@id',
+    'created',
     'owner',
     'rts_credentials',
     'stream_type',
-    'created',
 ]
 
 
@@ -54,7 +51,6 @@ const prune = [
 export default class EventService {
     constructor(
         private logger: Logger,
-        // @Inject('currentUser') private currentUser: User,
         private proxyService: UplynkProxyService,
     ) {}
 
@@ -87,34 +83,14 @@ export default class EventService {
         }
     }
 
-    public async createStream(userId: string, eventId: string, options: IStreamOptions): Promise<any> {
-        const url = buildUrl(`/rts/events/${eventId}/streams`);
-        const currentUser: User = Container.get('currentUser');
+    public async fetchStreams(eventId: string, query: any = {}): Promise<IStreamResponse> {
+        const url = buildUrl(`/rts/events/${eventId}/streams`, query);
 
-        const resp = await this.proxyService.request({
+        return await this.proxyService.request({
             keyMap,
-            url,
             prune,
-            method: 'post',
-            data: options,
+            url,
         });
-
-        let { stream } = resp;
-
-        if (!stream) {
-            throw new Error('Failed to create stream');
-        }
-
-        const eventStreamOptions: IEventStreamCreateAttributes = {
-            eventId,
-            userId,
-            ownerId: currentUser.id,
-            streamId: stream.id,
-        }
-
-        await EventStream.create(eventStreamOptions);
-
-        return stream;
     }
 
     public async performAction(streamId: string, action: string) {
@@ -126,16 +102,6 @@ export default class EventService {
                 timestamp: 0,
             },
             method: 'post',
-        });
-    }
-
-    public async getStreams(eventId: string, query: any = {}): Promise<IStreamResponse> {
-        const url = buildUrl(`/rts/events/${eventId}/streams`, query);
-
-        return await this.proxyService.request({
-            keyMap,
-            prune,
-            url,
         });
     }
 }

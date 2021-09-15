@@ -10,41 +10,43 @@ import Stream from '../../models/stream';
 import CronJob from '../cron-job';
 
 const skipKeys = [
-    'updatedAt',
     'createdAt',
+    'updatedAt',
 ];
 
 export default class StreamSyncTask extends CronJob {
-    public scheduleInterval: string = '*/10 * * * * *';
+    public scheduleInterval: string = '* * * *';
 
     public schedule() {
         try {
-            const streamService: StreamService = Container.get(StreamService);
-
-            this.scheduledTask = schedule(this.scheduleInterval, async () => {
-                const events = await Event.findAll({
-                    // paranoid: false,
-                });
-
-                let streams: IStream[] = [];
-
-                for (let event of events) {
-                    const resp = await streamService.getStreams(event.id, { include_deleted: true });
-                    const { items = [] } = resp;
-
-                    streams = streams.concat(items);
-                }
-
-                for (let stream of streams) {
-                    await this.processStream(stream);
-                }
-            });
+            this.scheduledTask = schedule(this.scheduleInterval, this.run);
         } catch (e) {
             this.logger.error('🔥 Error on schedule: %o', e);
         }
     }
 
-    private async processStream(s: IStream): Promise<void> {
+    public async run() {
+        const streamService: StreamService = Container.get(StreamService);
+
+        const events = await Event.findAll({
+            // paranoid: false,
+        });
+
+        let streams: IStream[] = [];
+
+        for (let event of events) {
+            const resp = await streamService.fetchStreams(event.id, { include_deleted: true });
+            const { items = [] } = resp;
+
+            streams = streams.concat(items);
+        }
+
+        for (let stream of streams) {
+            await this.processRecord(stream);
+        }
+    }
+
+    protected async processRecord(s: IStream) {
         try {
             let stream = await Stream.findOne({
                 where: {

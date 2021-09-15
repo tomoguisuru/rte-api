@@ -9,6 +9,12 @@ import { currentUser, IAuthRequest } from '../middleware/current-user';
 import jwtAuth from '../middleware/jwt-auth';
 import userAccess from '../middleware/user-access';
 
+import { serialize } from '../../utils/adapter-tools';
+import {
+    getPagination,
+    paginate,
+} from '../../utils/pagination';
+
 import { IUserCreateAttributes, User } from '../../models/user';
 
 import { EncryptionHelper } from '../../utils/encryption';
@@ -44,11 +50,18 @@ export default (app: Router) => {
             const logger: Logger = Container.get('logger');
 
             try {
-                const users = await User.findAll();
+                const pagination = getPagination(req);
 
-                const data = {
-                    users,
-                }
+                const results = await User.findAndCountAll(
+                    paginate({
+                        ...pagination,
+                    }),
+                );
+
+                const data = serialize({
+                    users: results.rows,
+                    total_items: results.count,
+                });
 
                 return res.status(200).json(data);
             } catch (err) {

@@ -9,6 +9,16 @@ import userAccess from '../middleware/user-access';
 import EventService from '../../services/event';
 import StreamService from '../../services/stream';
 
+import { Event } from '../../models/event';
+import { Stream } from '../../models/stream';
+
+import { serialize } from '../../utils/adapter-tools';
+
+import {
+    getPagination,
+    paginate,
+} from '../../utils/pagination';
+
 const route = Router();
 const ENDPOINT = '/events';
 
@@ -27,16 +37,22 @@ export default (app: Router) => {
         userAccess('events:read'),
         async (req: Request, res: Response, next: NextFunction) => {
             const logger: Logger = Container.get('logger');
-            const eventService: EventService = Container.get(EventService);
 
             try {
-                const {
-                    query,
-                } = req;
+                const pagination = getPagination(req);
 
-                const resp = await eventService.getEvents(query);
+                const results = await Event.findAndCountAll(
+                    paginate({
+                        ...pagination,
+                    }),
+                );
 
-                return res.status(200).json(resp);
+                const data = serialize({
+                    events: results.rows,
+                    total_items: results.count,
+                });
+
+                return res.status(200).json(data);
             } catch (err) {
 
                 logger.error('🔥 error: %o', err);
@@ -56,15 +72,50 @@ export default (app: Router) => {
         userAccess('events:read'),
         async (req: Request, res: Response, next: NextFunction) => {
             const logger: Logger = Container.get('logger');
-            const eventService: EventService = Container.get(EventService);
 
             try {
                 const {
                     params: { eventId },
-                    query,
+                    query: {
+                        include,
+                    },
                 } = req;
 
-                const data = await eventService.getEvent(eventId, query);
+                const findOptions = {
+                    where: {
+                        id: eventId,
+                    },
+                };
+
+                console.log('Query: ', req.query);
+                const eagerLoad: any[] = [];
+
+                if (include) {
+                    if (include === 'streams') {
+                        eagerLoad.push(Stream);
+                    } else if (Array.isArray(include)) {
+                        if ((include as string[]).includes('streams')) {
+                            eagerLoad.push(Stream);
+                        }
+                    }
+                }
+
+                if (eagerLoad.length > 0) {
+                    findOptions['include'] = eagerLoad;
+                }
+
+
+                const record = await Event.findOne(findOptions);
+
+                console.log('BLAH: ', findOptions, record)
+
+                if (!record) {
+                    return res.status(404);
+                }
+
+                const json = JSON.parse(JSON.stringify(record, null, 2));
+
+                const data = serialize(json);
 
                 return res.status(200).json(data);
             } catch (err) {
@@ -91,10 +142,23 @@ export default (app: Router) => {
             try {
                 const {
                     params: { eventId },
-                    query,
                 } = req;
 
-                const data = await streamService.getStreams(eventId, query);
+                const pagination = getPagination(req);
+
+                const results = await Stream.findAndCountAll(
+                    paginate({
+                        ...pagination,
+                        where: {
+                            eventId,
+                        }
+                    }),
+                );
+
+                const data = serialize({
+                    items: results.rows,
+                    total_items: results.count,
+                });
 
                 return res.status(200).json(data);
             } catch (err) {
@@ -152,41 +216,7 @@ export default (app: Router) => {
 
                 const data = await eventService.getToken(eventId, tokenType, req.body);
 
-                return res.status(200).json(data);
-            } catch (err) {
-                logger.error('🔥 error: %o', err);
-
-                return res.status(500).json({
-                    status: 'failed',
-                    message: err.message,
-                });
-            }
-        }
-    );
-
-    route.get(
-        '/:eventId/event-streams/:eventStreamId',
-        jwtAuth,
-        currentUser,
-        userAccess('streams:read'),
-        async (req: Request, res: Response, next: NextFunction) => {
-            const logger: Logger = Container.get('logger');
-            const streamService: StreamService = Container.get(StreamService);
-
-            try {
-                const {
-                    params: {
-                        eventId,
-                        eventStreamId,
-                    },
-                } = req;
-
-                const {
-                    streamId,
-                    userId,
-                } = (req.body as IEventStreamOptions);
-
-                const data = await streamService.assignStream(userId, eventId, streamId);
+                console.log('Token: ', data)
 
                 return res.status(200).json(data);
             } catch (err) {

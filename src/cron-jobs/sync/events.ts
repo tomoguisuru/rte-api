@@ -8,29 +8,31 @@ import Event from '../../models/event';
 import CronJob from '../cron-job';
 
 const skipKeys = [
-    'updatedAt',
     'createdAt',
+    'updatedAt',
 ];
 
 export default class EventSyncTask extends CronJob {
-    public scheduleInterval: string = '*/10 * * * * *';
+    public scheduleInterval: string = '* * * *';
 
     public schedule() {
         try {
-            const eventService: EventService = Container.get(EventService);
-            this.scheduledTask = schedule(this.scheduleInterval, async () => {
-                const events = await eventService.getAllEvents({ include_deleted: true });
-
-                for (let e of events) {
-                    await this.processEvent(e);
-                }
-            });
+            this.scheduledTask = schedule(this.scheduleInterval, this.run);
         } catch (e) {
             this.logger.error('🔥 Error on schedule: %o', e);
         }
     }
 
-    private async processEvent(e: IEvent): Promise<void> {
+    public async run() {
+        const eventService: EventService = Container.get(EventService);
+        const events = await eventService.getAllEvents({ include_deleted: true });
+
+        for (let e of events) {
+            await this.processRecord(e);
+        }
+    }
+
+    protected async processRecord(e: IEvent) {
         try {
             let event = await Event.findOne({
                 where: {

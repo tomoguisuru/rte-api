@@ -6,13 +6,32 @@ import { currentUser, IAuthRequest } from "../middleware/current-user";
 import jwtAuth from "../middleware/jwt-auth";
 import userAccess from '../middleware/user-access';
 
-import EventService from '../../services/event';
 import StreamService from '../../services/stream';
 
+import { Event } from '../../models/event';
 import { EventStream } from '../../models/event-stream';
+import { Stream } from '../../models/stream';
+
+import { serialize } from '../../utils/adapter-tools';
+
+import {
+    getPagination,
+    paginate,
+} from '../../utils/pagination';
 
 const route = Router();
 const ENDPOINT = '/streams';
+
+interface IEventStream {
+    event: Event;
+    stream: Stream;
+}
+
+interface IEventStreamResponse {
+    events: Event[];
+    streams: Stream[];
+    total_items: number;
+}
 
 export default (app: Router) => {
     app.use(ENDPOINT, route);
@@ -24,8 +43,6 @@ export default (app: Router) => {
         userAccess('publisher:read'),
         async (req: IAuthRequest, res: Response, next: NextFunction) => {
             const logger: Logger = Container.get('logger');
-            const eventService: EventService = Container.get(EventService);
-            const streamService: StreamService = Container.get(StreamService);
 
             try {
                 const {
@@ -36,48 +53,50 @@ export default (app: Router) => {
                     return;
                 }
 
-                const links = await EventStream.findAll({
+                const pagination = getPagination(req);
+
+                const results = await EventStream.findAndCountAll({
+                    ...paginate({
+                        ...pagination,
+                        where: {
+                            userId: currentUser.id,
+                        },
+                    }),
                     attributes: [
                         'eventId',
                         'streamId',
                     ],
-                    where: {
-                        userId: currentUser.id,
-                    },
+                    include: [ Event, Stream ],
                 });
 
-                const eventMap = links.reduce((rv, x) => {
-                    const key = x['eventId'];
-                    const value = x['streamId'];
+                const matcher = /(event|stream)\.\b(\w*)/;
 
-                    const values = (rv[key] || []);
-                    values.push(value);
-                    rv[key] = values;
+                const data = results.rows.reduce((rv, r: EventStream) => {
+                    const record = Object.keys(r).reduce((rx, key) => {
+                        const match = key.match(matcher);
+
+                        if (match) {
+                            const t = rx[match[1]];
+                            t[match[2]] = r[key];
+                        }
+
+                        return rx;
+                    }, {
+                        event: {},
+                        stream: {},
+                    } as IEventStream);
+
+                    rv.events.push(record.event);
+                    rv.streams.push(record.stream);
 
                     return rv;
-                }, {});
+                }, {
+                    events: [],
+                    streams: [],
+                    total_items: results.count,
+                } as IEventStreamResponse);
 
-                const items: any[] = [];
-                const events: any[] = [];
-
-                for (const eventId in eventMap) {
-                    const streamResp = await streamService.getStreams(eventId);
-
-                    const streams = streamResp.items;
-                    const streamIds = eventMap[eventId];
-
-                    if (streamIds.length === 0) {
-                        continue;
-                    }
-
-                    const filtered = streams.filter(s => streamIds.includes(s.id));
-                    const event = await eventService.getEvent(eventId);
-
-                    events.push(event);
-                    items.push(...filtered);
-                }
-
-                return res.status(200).json({ streams: items, events });
+                return res.status(200).json(serialize(data));
             } catch (err) {
                 logger.error('🔥 error: %o', err);
                 return next(err);
