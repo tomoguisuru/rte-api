@@ -21,6 +21,7 @@ class Jobs {
 
             this.cronJobs[key] = task;
 
+            task.stop();
             task.schedule();
         } catch (e) {
             this.logger.error('🔥 Unable to start cron job: %o', e);

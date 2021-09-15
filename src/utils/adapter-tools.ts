@@ -58,15 +58,7 @@ export function serialize<T>(data: T, options?: ISerializableOptions): T {
         return data;
     }
 
-    let keys;
-
-    try {
-        keys = Object.keys(data);
-    } catch (err) {
-        console.log(err);
-        console.log(data);
-    }
-
+    const keys = Object.keys(data);
 
     if (keys.length > 0) {
         return keys.reduce((rv, key) => {

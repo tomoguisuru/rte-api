@@ -146,8 +146,6 @@ export default class EventService {
             prune: [ '@id', '@type'],
         });
 
-        console.log('RESP: ', resp)
-
         const { token = '' } = resp
 
         return { token };

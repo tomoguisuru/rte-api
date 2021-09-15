@@ -15,11 +15,11 @@ const skipKeys = [
 ];
 
 export default class StreamSyncTask extends CronJob {
-    public scheduleInterval: string = '* * * *';
+    public scheduleInterval: string = '*/10 * * * *';
 
     public schedule() {
         try {
-            this.scheduledTask = schedule(this.scheduleInterval, this.run);
+            this.scheduledTask = schedule(this.scheduleInterval, async () => this.run());
         } catch (e) {
             this.logger.error('🔥 Error on schedule: %o', e);
         }
@@ -79,9 +79,6 @@ export default class StreamSyncTask extends CronJob {
                 }
 
             } else {
-                console.log('Stream: ', s)
-
-
                 stream = await Stream.create({
                     id: s.id,
                     alias: s.alias,

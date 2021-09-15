@@ -13,11 +13,11 @@ const skipKeys = [
 ];
 
 export default class EventSyncTask extends CronJob {
-    public scheduleInterval: string = '* * * *';
+    public scheduleInterval: string = '*/2 * * * *';
 
     public schedule() {
         try {
-            this.scheduledTask = schedule(this.scheduleInterval, this.run);
+            this.scheduledTask = schedule(this.scheduleInterval, async () => this.run());
         } catch (e) {
             this.logger.error('🔥 Error on schedule: %o', e);
         }

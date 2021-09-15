@@ -87,7 +87,6 @@ export default (app: Router) => {
                     },
                 };
 
-                console.log('Query: ', req.query);
                 const eagerLoad: any[] = [];
 
                 if (include) {
@@ -106,8 +105,6 @@ export default (app: Router) => {
 
 
                 const record = await Event.findOne(findOptions);
-
-                console.log('BLAH: ', findOptions, record)
 
                 if (!record) {
                     return res.status(404);
@@ -215,8 +212,6 @@ export default (app: Router) => {
                 } = req;
 
                 const data = await eventService.getToken(eventId, tokenType, req.body);
-
-                console.log('Token: ', data)
 
                 return res.status(200).json(data);
             } catch (err) {
