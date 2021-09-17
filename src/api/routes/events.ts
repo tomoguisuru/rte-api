@@ -12,251 +12,242 @@ import StreamService from '../../services/stream';
 import { Event } from '../../models/event';
 import { Stream } from '../../models/stream';
 
-import { serialize } from '../../utils/adapter-tools';
+import {
+  eagerLoading,
+  separateIncluded,
+  serialize,
+} from '../../utils/adapter-tools';
 
 import {
-    getPagination,
-    paginate,
+  paginate,
 } from '../../utils/pagination';
 
 const route = Router();
 const ENDPOINT = '/events';
 
-interface IEventStreamOptions {
-    streamId: string;
-    userId: string;
+interface IStreamRels {
+  events: Event[];
+}
+
+interface IStreamResponse {
+  events?: Event[];
+  streams: Stream[];
+  total_items: number;
 }
 
 export default (app: Router) => {
-    app.use(ENDPOINT, route);
+  app.use(ENDPOINT, route);
 
-    route.get(
-        '/',
-        jwtAuth,
-        currentUser,
-        userAccess('events:read'),
-        async (req: Request, res: Response, next: NextFunction) => {
-            const logger: Logger = Container.get('logger');
+  route.get(
+    '/',
+    jwtAuth,
+    currentUser,
+    userAccess('events:read'),
+    async (req: Request, res: Response, next: NextFunction) => {
+      const logger: Logger = Container.get('logger');
 
-            try {
-                const pagination = getPagination(req);
+      try {
+        const results = await Event.findAndCountAll(
+          paginate(req),
+        );
 
-                const results = await Event.findAndCountAll(
-                    paginate({
-                        ...pagination,
-                    }),
-                );
+        const data = serialize({
+          events: results.rows,
+          total_items: results.count,
+        });
 
-                const data = serialize({
-                    events: results.rows,
-                    total_items: results.count,
-                });
+        return res.status(200).json(data);
+      } catch (err) {
 
-                return res.status(200).json(data);
-            } catch (err) {
+        logger.error('🔥 error: %o', err);
 
-                logger.error('🔥 error: %o', err);
+        return res.status(500).json({
+          status: 'failed',
+          message: err.message,
+        });
+      }
+    }
+  );
 
-                return res.status(500).json({
-                   status: 'failed',
-                   message: err.message,
-                });
-            }
+  route.get(
+    '/:eventId',
+    jwtAuth,
+    currentUser,
+    userAccess('events:read'),
+    async (req: Request, res: Response, next: NextFunction) => {
+      const logger: Logger = Container.get('logger');
+
+      try {
+        let {
+          params: { eventId },
+          query: {
+            include = '',
+          },
+        } = req;
+
+        include = (include as string).split(',');
+
+        const findOptions = eagerLoading(
+          {
+            where: {
+              id: eventId,
+            },
+          },
+          include,
+        );
+
+        const record = await Event.findOne(findOptions);
+
+        if (!record) {
+          return res.status(404);
         }
-    );
 
-    route.get(
-        '/:eventId',
-        jwtAuth,
-        currentUser,
-        userAccess('events:read'),
-        async (req: Request, res: Response, next: NextFunction) => {
-            const logger: Logger = Container.get('logger');
+        console.log('record: ', record)
 
-            try {
-                const {
-                    params: { eventId },
-                    query: {
-                        include,
-                    },
-                } = req;
+        const json = JSON.parse(JSON.stringify(record, null, 2));
 
-                const findOptions = {
-                    where: {
-                        id: eventId,
-                    },
-                };
+        const serialized = serialize(json);
 
-                const eagerLoad: any[] = [];
+        const data = {
+          event: serialized,
+        };
 
-                if (include) {
-                    if (include === 'streams') {
-                        eagerLoad.push(Stream);
-                    } else if (Array.isArray(include)) {
-                        if ((include as string[]).includes('streams')) {
-                            eagerLoad.push(Stream);
-                        }
-                    }
-                }
+        include.forEach(rel => {
+          const { event } = data;
 
-                if (eagerLoad.length > 0) {
-                    findOptions['include'] = eagerLoad;
-                }
+          const records = event[rel] || [];
 
+          if (records.length > 0) {
+            data[rel] = records;
+          }
 
-                const record = await Event.findOne(findOptions);
+          delete data.event[rel];
+        });
 
-                if (!record) {
-                    return res.status(404);
-                }
+        return res.status(200).json(data);
+      } catch (err) {
 
-                const json = JSON.parse(JSON.stringify(record, null, 2));
+        logger.error('🔥 error: %o', err);
 
-                const data = serialize(json);
+        return res.status(500).json({
+          status: 'failed',
+          message: err.message,
+        });
+      }
+    }
+  );
 
-                return res.status(200).json(data);
-            } catch (err) {
+  route.get(
+    '/:eventId/streams',
+    jwtAuth,
+    currentUser,
+    userAccess('streams:read'),
+    async (req: Request, res: Response, next: NextFunction) => {
+      const logger: Logger = Container.get('logger');
+      const streamService: StreamService = Container.get(StreamService);
 
-                logger.error('🔥 error: %o', err);
+      try {
+        let {
+          params: { eventId },
+          query: {
+            include = '',
+          },
+        } = req;
 
-                return res.status(500).json({
-                    status: 'failed',
-                    message: err.message,
-                });
+        include = (include as string).split(',');
+
+        const findOptions = eagerLoading(
+          paginate(req, {
+            where: {
+              eventId,
             }
-        }
-    );
+          }),
+          include,
+        );
 
-    route.get(
-        '/:eventId/streams',
-        jwtAuth,
-        currentUser,
-        userAccess('streams:read'),
-        async (req: Request, res: Response, next: NextFunction) => {
-            const logger: Logger = Container.get('logger');
-            const streamService: StreamService = Container.get(StreamService);
+        const results = await Stream.findAndCountAll(findOptions);
 
-            try {
-                const {
-                    params: { eventId },
-                } = req;
+        const data = results.rows.reduce((rv, r: Stream) => {
+          const { events } = separateIncluded<IStreamRels>(r);
 
-                const pagination = getPagination(req);
+          if (events) {
+            rv.events = (rv.events || []).concat(events);
+          }
 
-                const results = await Stream.findAndCountAll(
-                    paginate({
-                        ...pagination,
-                        where: {
-                            eventId,
-                        }
-                    }),
-                );
+          rv.streams.push(r);
 
-                const data = serialize({
-                    items: results.rows,
-                    total_items: results.count,
-                });
+          return rv;
+        }, {
+          events: [],
+          streams: [],
+          total_items: results.count,
+        } as IStreamResponse);
 
-                return res.status(200).json(data);
-            } catch (err) {
+        return res.status(200).json(serialize(data));
+      } catch (err) {
 
-                logger.error('🔥 error: %o', err);
+        logger.error('🔥 error: %o', err);
 
-                return res.status(500).json({
-                    status: 'failed',
-                    message: err.message,
-                });
-            }
-        }
-    );
+        return res.status(500).json({
+          status: 'failed',
+          message: err.message,
+        });
+      }
+    }
+  );
 
-    route.get(
-        '/:eventId/manifest',
-        async (req: Request, res: Response, next: NextFunction) => {
-            const logger: Logger = Container.get('logger');
-            const eventService: EventService = Container.get(EventService);
+  route.get(
+    '/:eventId/manifest',
+    async (req: Request, res: Response, next: NextFunction) => {
+      const logger: Logger = Container.get('logger');
+      const eventService: EventService = Container.get(EventService);
 
-            try {
-                const {
-                    params: { eventId },
-                    query,
-                } = req;
+      try {
+        const {
+          params: { eventId },
+          query,
+        } = req;
 
-                const data = await eventService.getManifest(eventId, query);
+        const data = await eventService.getManifest(eventId, query);
 
-                return res.status(200).json(data);
-            } catch (err) {
+        return res.status(200).json(data);
+      } catch (err) {
 
-                logger.error('🔥 error: %o', err);
+        logger.error('🔥 error: %o', err);
 
-                return res.status(500).json({
-                    status: 'failed',
-                    message: err.message,
-                });
-            }
-        }
-    );
+        return res.status(500).json({
+          status: 'failed',
+          message: err.message,
+        });
+      }
+    }
+  );
 
-    route.post(
-        '/:eventId/token/:tokenType',
-        async (req: Request, res: Response, next: NextFunction) => {
-            const logger: Logger = Container.get('logger');
-            const eventService: EventService = Container.get(EventService);
+  route.post(
+    '/:eventId/token/:tokenType',
+    async (req: Request, res: Response, next: NextFunction) => {
+      const logger: Logger = Container.get('logger');
+      const eventService: EventService = Container.get(EventService);
 
-            try {
-                const {
-                    params: {
-                        eventId,
-                        tokenType,
-                    },
-                } = req;
+      try {
+        const {
+          params: {
+            eventId,
+            tokenType,
+          },
+        } = req;
 
-                const data = await eventService.getToken(eventId, tokenType, req.body);
+        const data = await eventService.getToken(eventId, tokenType, req.body);
 
-                return res.status(200).json(data);
-            } catch (err) {
-                logger.error('🔥 error: %o', err);
+        return res.status(200).json(data);
+      } catch (err) {
+        logger.error('🔥 error: %o', err);
 
-                return res.status(500).json({
-                    status: 'failed',
-                    message: err.message,
-                });
-            }
-        }
-    );
-
-    route.put(
-        '/:eventId/event-streams',
-        jwtAuth,
-        currentUser,
-        userAccess('streams:write'),
-        async (req: Request, res: Response, next: NextFunction) => {
-            const logger: Logger = Container.get('logger');
-            const streamService: StreamService = Container.get(StreamService);
-
-            try {
-                const {
-                    params: {
-                        eventId,
-                    },
-                } = req;
-
-                const {
-                    streamId,
-                    userId,
-                } = (req.body as IEventStreamOptions);
-
-                await streamService.assignStream(userId, eventId, streamId);
-
-                return res.status(204).end();
-            } catch (err) {
-                logger.error('🔥 error: %o', err);
-
-                return res.status(500).json({
-                    status: 'failed',
-                    message: err.message,
-                });
-            }
-        }
-    );
+        return res.status(500).json({
+          status: 'failed',
+          message: err.message,
+        });
+      }
+    }
+  );
 }

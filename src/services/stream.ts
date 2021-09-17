@@ -1,12 +1,10 @@
-import Container, { Service } from 'typedi';
+import { Service } from 'typedi';
 import { Logger } from 'winston';
 
 import UplynkProxyService from './uplynk-proxy';
 
 import { buildUrl } from '../utils/url-tools';
 
-import { EventStream } from '../models/event-stream';
-import { User } from '../models/user';
 
 export interface IStreamOptions {
     quality: 'hd' | 'sd';
@@ -48,40 +46,11 @@ const prune = [
 
 
 @Service()
-export default class EventService {
+export default class StreamService {
     constructor(
         private logger: Logger,
         private proxyService: UplynkProxyService,
     ) {}
-
-    public async assignStream(userId: string, eventId: string, streamId: string): Promise<boolean> {
-        try {
-            const currentUser: User = Container.get('currentUser');
-            let eventStream = await EventStream.findOne({
-                where: {
-                    eventId,
-                    userId,
-                },
-            });
-
-            if (eventStream) {
-                await eventStream.update({ streamId });
-            } else {
-                eventStream = await EventStream.create({
-                    eventId,
-                    streamId,
-                    ownerId: currentUser.id,
-                    userId,
-                });
-            }
-
-            return true;
-        } catch (err) {
-            this.logger.error(err.message);
-
-            return false;
-        }
-    }
 
     public async fetchStreams(eventId: string, query: any = {}): Promise<IStreamResponse> {
         const url = buildUrl(`/rts/events/${eventId}/streams`, query);

@@ -1,9 +1,6 @@
 import { EventDispatcher } from "event-dispatch";
 
-// import { Optional } from 'sequelize/types';
 import {
-  // Index,
-  // IsUUID,
   AfterCreate,
   Column,
   DefaultScope,
@@ -13,7 +10,6 @@ import {
   Table,
 } from 'sequelize-typescript';
 
-import { EventStream } from './event-stream';
 import { Stream } from './stream';
 
 export interface IEventAttributes {
@@ -49,16 +45,6 @@ export class Event extends Model<IEventAttributes> implements IEventAttributes {
   @Column
   externalId: string;
 
-  // @Index({
-  //   name: 'ucc-index',
-  //   type: 'UNIQUE',
-  //   where: {
-  //     deletedAt: null,
-  //   },
-  // })
-  // @Column
-  // uccId: string;
-
   @Column
   title: string;
 
@@ -67,9 +53,6 @@ export class Event extends Model<IEventAttributes> implements IEventAttributes {
 
   @Column
   desc: string;
-
-  @HasMany(() => EventStream)
-  eventStreams: EventStream[];
 
   @HasMany(() => Stream)
   streams: Stream[];

@@ -15,6 +15,7 @@ import {
 } from 'sequelize-typescript';
 
 import { Event } from './event';
+import { User } from './user';
 
 interface IStreamAttributes {
   alias: string;
@@ -24,6 +25,7 @@ interface IStreamAttributes {
   id: string;
   quality: string;
   title: string;
+  userId?: string;
 }
 
 // export interface IStreamCreateAttributes extends Optional<IStreamAttributes, 'id'> { }
@@ -39,6 +41,7 @@ interface IStreamAttributes {
     'id',
     'quality',
     'title',
+    'userId',
   ],
 }))
 @Table({
@@ -71,6 +74,13 @@ export class Stream extends Model<IStreamAttributes> implements IStreamAttribute
 
   @BelongsTo(() => Event, 'eventId')
   event: Event;
+
+  @ForeignKey(() => User)
+  @Column
+  userId: string;
+
+  @BelongsTo(() => User, 'userId')
+  user: User;
 
   // @BeforeCreate
   // static beforeCreate(instance: User) {

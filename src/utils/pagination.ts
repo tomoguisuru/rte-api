@@ -1,52 +1,57 @@
 import { Request } from 'express';
 
 export interface IPaginate {
-    page?: number;
-    page_size?: number;
+  page: number;
+  page_size: number;
 }
 
-export interface IQueryable extends IPaginate {
-    where?: any;
-    raw?: boolean;
+export interface IQueryable {
+  where?: any;
+  raw?: boolean;
 }
 
 export function getPagination(req: Request): IPaginate {
-    let {
-        page,
-        page_size,
-    } = req.query;
+  let {
+    page,
+    page_size,
+  } = req.query;
 
-    const pagination: IPaginate = {};
+  const pagination: IPaginate = {
+    page: 1,
+    page_size: 10,
+  };
 
-    if (page) {
-        pagination['page'] = parseInt(page as string, 10);
-    }
+  if (page) {
+    pagination['page'] = parseInt(page as string, 10);
+  }
 
-    if (page_size) {
-        pagination['page_size'] = parseInt(page_size as string, 10);
-    }
+  if (page_size) {
+    pagination['page_size'] = parseInt(page_size as string, 10);
+  }
+
+  return pagination;
 }
 
-export function paginate(query: IQueryable = {}) {
-    const {
-        page = 1,
-        page_size = 10,
-        raw = true,
-        where,
-    } = query;
+export function paginate(req: Request, query: IQueryable = {}) {
+  const { page, page_size } = getPagination(req);
 
-    const data = {
-        limit: page_size,
-        offset: ((page - 1) * page_size),
-    }
+  const {
+    raw = true,
+    where,
+  } = query;
 
-    if (where) {
-        data['where'] = where;
-    }
+  const data = {
+    limit: page_size,
+    offset: ((page - 1) * page_size),
+  }
 
-    if (raw) {
-        data['raw'] = true;
-    }
+  if (where) {
+    data['where'] = where;
+  }
 
-    return data;
+  if (raw) {
+    data['raw'] = true;
+  }
+
+  return data;
 }
