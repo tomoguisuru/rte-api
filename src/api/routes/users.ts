@@ -196,9 +196,11 @@ export default (app: Router) => {
           return next();
         }
 
-        const data = {
-          user,
-        }
+        const json = JSON.parse(JSON.stringify(user, null, 2))
+
+        const data = serialize({
+          user: json,
+        });
 
         return res.status(200).json(data);
       } catch (err) {

@@ -7,14 +7,13 @@ import jwtAuth from "../middleware/jwt-auth";
 import userAccess from '../middleware/user-access';
 
 import EventService from '../../services/event';
-import StreamService from '../../services/stream';
 
 import { Event } from '../../models/event';
 import { Stream } from '../../models/stream';
 
 import {
+  buildIncluded,
   eagerLoading,
-  separateIncluded,
   serialize,
 } from '../../utils/adapter-tools';
 
@@ -24,16 +23,6 @@ import {
 
 const route = Router();
 const ENDPOINT = '/events';
-
-interface IStreamRels {
-  events: Event[];
-}
-
-interface IStreamResponse {
-  events?: Event[];
-  streams: Stream[];
-  total_items: number;
-}
 
 export default (app: Router) => {
   app.use(ENDPOINT, route);
@@ -144,7 +133,6 @@ export default (app: Router) => {
     userAccess('streams:read'),
     async (req: Request, res: Response, next: NextFunction) => {
       const logger: Logger = Container.get('logger');
-      const streamService: StreamService = Container.get(StreamService);
 
       try {
         let {
@@ -166,22 +154,15 @@ export default (app: Router) => {
         );
 
         const results = await Stream.findAndCountAll(findOptions);
+        const {
+          models: streams,
+          included,
+        } = buildIncluded(results);
 
-        const data = results.rows.reduce((rv, r: Stream) => {
-          const { events } = separateIncluded<IStreamRels>(r);
-
-          if (events) {
-            rv.events = (rv.events || []).concat(events);
-          }
-
-          rv.streams.push(r);
-
-          return rv;
-        }, {
-          events: [],
-          streams: [],
+        const data = Object.assign({}, included, {
+          streams,
           total_items: results.count,
-        } as IStreamResponse);
+        });
 
         return res.status(200).json(serialize(data));
       } catch (err) {

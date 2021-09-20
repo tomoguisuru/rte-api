@@ -1,11 +1,8 @@
 import { camelize, underscore, pluralize } from 'inflection';
 
-import {
-  Model,
-} from 'sequelize-typescript';
-
 import { Event } from '../models/event';
 import { Stream } from '../models/stream';
+import { User } from '../models/user';
 
 interface ISerializableOptions {
   keyMap?: {};
@@ -71,6 +68,10 @@ export function eagerLoading<T>(findOptions: T, include: string[]): T {
     if (include.some(i => /^event(s)$/.test(i.toLocaleLowerCase()))) {
       eagerLoad.push(Event);
     }
+
+    if (include.some(i => /^user(s)$/.test(i.toLocaleLowerCase()))) {
+      eagerLoad.push(User);
+    }
   }
 
   if (eagerLoad.length > 0) {
@@ -118,7 +119,7 @@ export function serialize<T>(data: T, options?: ISerializableOptions): T {
 }
 
 export function separateIncluded<T>(record): T {
-  const matcher = /^(event|stream)s?\.(\w*)/;
+  const matcher = /^(event|stream|user)s?\.(\w*)/;
 
   const rels = Object.keys(record).reduce((rx, key) => {
     const match = key.match(matcher);
@@ -142,4 +143,34 @@ export function separateIncluded<T>(record): T {
 
     return rv;
   }, {} as T);
+}
+
+export function buildIncluded(results) {
+  const data = results.rows.reduce((rv, r) => {
+    const rels = separateIncluded<any>(r);
+    const { included } = rv;
+
+    Object.keys(rels).forEach(key => {
+      if (key.length > 0) {
+        included[key] = (included[key] || []).concat(rels[key]);
+      }
+    });
+
+    rv.models.push(r);
+
+    return rv;
+  }, {
+    models: [],
+    included: {},
+  } as any);
+
+  Object.keys(data).forEach(key => {
+    const value = data[key];
+
+    if (Array.isArray(value) && value.length === 0) {
+      delete data[key];
+    }
+  });
+
+  return data;
 }

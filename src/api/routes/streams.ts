@@ -8,12 +8,11 @@ import userAccess from '../middleware/user-access';
 
 import StreamService from '../../services/stream';
 
-import { Event } from '../../models/event';
 import { Stream } from '../../models/stream';
 
 import {
+  buildIncluded,
   eagerLoading,
-  separateIncluded,
   serialize,
 } from '../../utils/adapter-tools';
 
@@ -23,16 +22,6 @@ import {
 
 const route = Router();
 const ENDPOINT = '/streams';
-
-interface IStreamRels {
-  events: Event[];
-}
-
-interface IStreamResponse {
-  events?: Event[];
-  streams: Stream[];
-  total_items: number;
-}
 
 export default (app: Router) => {
   app.use(ENDPOINT, route);
@@ -69,21 +58,15 @@ export default (app: Router) => {
         );
 
         const results = await Stream.findAndCountAll(findOptions);
-        const data = results.rows.reduce((rv, r: Stream) => {
-          const { events } = separateIncluded<IStreamRels>(r);
+        const {
+          models: streams,
+          included,
+        } = buildIncluded(results);
 
-          if (events) {
-            rv.events = (rv.events || []).concat(events);
-          }
-
-          rv.streams.push(r);
-
-          return rv;
-        }, {
-          events: [],
-          streams: [],
+        const data = Object.assign({}, included, {
+          streams,
           total_items: results.count,
-        } as IStreamResponse);
+        });
 
         return res.status(200).json(serialize(data));
       } catch (err) {
@@ -112,7 +95,44 @@ export default (app: Router) => {
 
         const data = await streamService.performAction(streamId, action);
 
-        return res.status(204).json(data);
+        return res.status(204);
+      } catch (err) {
+        logger.error('🔥 error: %o', err);
+
+        return res.status(500).json({
+          status: 'failed',
+          message: err.message,
+        });
+      }
+    }
+  );
+
+  route.patch(
+    '/:streamId',
+    jwtAuth,
+    currentUser,
+    userAccess('stream:write'),
+    async (req: Request, res: Response, next: NextFunction) => {
+      const logger: Logger = Container.get('logger');
+      const streamService: StreamService = Container.get(StreamService);
+
+      try {
+        const {
+          params: {
+            streamId,
+          },
+          body,
+        } = req;
+
+        const stream = await Stream.findByPk(streamId);
+
+        if (!stream) {
+          return res.status(404).end();
+        }
+
+        stream?.update(serialize(body, { camelize: true }));
+
+        return res.status(204).end();
       } catch (err) {
         logger.error('🔥 error: %o', err);
 
