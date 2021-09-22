@@ -37,12 +37,11 @@ export default class UplynkProxyService {
             method = 'get',
         } = req;
 
-
-        this.logger.info(`${method.toUpperCase()} ${url}`);
-
         const { domain } = config.uplynk;
 
         req.url = `${domain}${url}`;
+
+        this.logger.info(`${method.toUpperCase()} ${req.url}`);
 
         return this.requestBase(req);
     }

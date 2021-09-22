@@ -233,7 +233,7 @@ export default (app: Router) => {
 
         await user.update({ role });
 
-        return res.status(204);
+        return res.status(204).end();
       } catch (err) {
         logger.error('🔥 error: %o', err);
         return next(err);

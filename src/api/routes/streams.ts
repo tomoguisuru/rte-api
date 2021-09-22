@@ -93,9 +93,13 @@ export default (app: Router) => {
           },
         } = req;
 
-        const data = await streamService.performAction(streamId, action);
+        await streamService.performAction(streamId, action);
 
-        return res.status(204);
+        console.log('***********************')
+        console.log('BJHKLSHJDHFKJSDKFJHSKDF')
+        console.log('***********************')
+
+        return res.status(204).end();
       } catch (err) {
         logger.error('🔥 error: %o', err);
 
