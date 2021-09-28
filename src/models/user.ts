@@ -24,7 +24,7 @@ import {
 import config from '../config';
 import { EncryptionHelper } from '../utils/encryption';
 
-import { EventStream } from './event-stream';
+import { Stream } from './stream';
 
 interface IUserAttributes {
   id: string;
@@ -75,8 +75,8 @@ export class User extends Model<IUserAttributes, IUserCreateAttributes> implemen
   @Column
   role: string;
 
-  @HasMany(() => EventStream)
-  eventStreams: EventStream[];
+  @HasMany(() => Stream)
+  streams: Stream[];
 
   public async setPassword(password) {
     const { hash, salt } = await EncryptionHelper.encrypt(password);

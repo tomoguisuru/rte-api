@@ -9,6 +9,11 @@ import { currentUser, IAuthRequest } from '../middleware/current-user';
 import jwtAuth from '../middleware/jwt-auth';
 import userAccess from '../middleware/user-access';
 
+import { serialize } from '../../utils/adapter-tools';
+import {
+  paginate,
+} from '../../utils/pagination';
+
 import { IUserCreateAttributes, User } from '../../models/user';
 
 import { EncryptionHelper } from '../../utils/encryption';
@@ -17,211 +22,222 @@ const route = Router();
 const ENDPOINT = '/users';
 
 interface IUserCreateParams {
-    firstName: string;
-    lastName: string;
-    password: string;
-    email: string;
+  firstName: string;
+  lastName: string;
+  password: string;
+  email: string;
 }
 
 interface ILoginParams {
-    email: string;
-    password: string;
+  email: string;
+  password: string;
 }
 
 interface IRoleParams {
-    role: string;
+  role: string;
 }
 
 export default (app: Router) => {
-    app.use(ENDPOINT, route);
+  app.use(ENDPOINT, route);
 
-    route.get(
-        '/',
-        jwtAuth,
-        currentUser,
-        userAccess('users:read'),
-        async (req: Request, res: Response, next: NextFunction) => {
-            const logger: Logger = Container.get('logger');
+  route.get(
+    '/',
+    jwtAuth,
+    currentUser,
+    userAccess('users:read'),
+    async (req: Request, res: Response, next: NextFunction) => {
+      const logger: Logger = Container.get('logger');
 
-            try {
-                const users = await User.findAll();
+      try {
+        const results = await User.findAndCountAll(
+          paginate(req),
+        );
 
-                const data = {
-                    users,
-                }
+        const data = serialize({
+          users: results.rows,
+          total_items: results.count,
+        });
 
-                return res.status(200).json(data);
-            } catch (err) {
-                logger.error('🔥 error: %o', err);
-                return next(err);
-            }
+        return res.status(200).json(data);
+      } catch (err) {
+        logger.error('🔥 error: %o', err);
+        return next(err);
+      }
+    }
+  );
+
+  route.post(
+    '/login',
+    async (req: Request, res: Response, next: NextFunction) => {
+      const logger: Logger = Container.get('logger');
+      const redisClient: RedisClient = Container.get('redisClient');
+
+      try {
+        const {
+          email = '',
+          password = '',
+        } = (req.body as ILoginParams);
+
+        const user = await User.scope('login').findOne({ where: { email } });
+
+        if (user) {
+          const verified = await user.verifyPassword(password);
+
+          if (verified) {
+            const jwt = await user.getJWT();
+
+            const {
+              refreshToken,
+            } = jwt;
+
+            const key = `${user.id}#refreshTokens`;
+
+            redisClient.set(key, refreshToken)
+
+            return res.status(200).json(jwt);
+          }
         }
-    );
 
-    route.post(
-        '/login',
-        async (req: Request, res: Response, next: NextFunction) => {
-            const logger: Logger = Container.get('logger');
-            const redisClient: RedisClient = Container.get('redisClient');
+        return res.status(401).json({
+          message: 'email and password do not match',
+        });
+      } catch (err) {
+        logger.error('🔥 error: %o', err);
+        return next(err);
+      }
+    }
+  );
 
-            try {
-                const {
-                    email = '',
-                    password = '',
-                } = (req.body as ILoginParams);
+  route.get(
+    '/me',
+    jwtAuth,
+    currentUser,
+    userAccess('publisher:read'),
+    async (req: IAuthRequest, res: Response, next: NextFunction) => {
+      const logger: Logger = Container.get('logger');
 
-                const user = await User.scope('login').findOne({ where: { email } });
+      try {
+        const {
+          currentUser,
+        } = req;
 
-                if (user) {
-                    const verified = await user.verifyPassword(password);
+        const user = await User.findByPk(currentUser?.id);
+        const data = JSON.parse(JSON.stringify(user, null, 2));
 
-                    if (verified) {
-                        const jwt = await user.getJWT();
+        return res.status(200).json({ user: serialize(data) });
+      } catch (err) {
+        logger.error('🔥 error: %o', err);
+        return next(err);
+      }
+    }
+  );
 
-                        const {
-                            refreshToken,
-                        } = jwt;
+  route.post(
+    '/register',
+    async (req: Request, res: Response, next: NextFunction) => {
+      const logger: Logger = Container.get('logger');
 
-                        const key = `${user.id}#refreshTokens`;
+      try {
+        const {
+          email,
+          password,
+          firstName,
+          lastName,
+        } = (req.body as IUserCreateParams);
 
-                        redisClient.set(key, refreshToken)
+        const { hash, salt } = await EncryptionHelper.encrypt(password);
 
-                        return res.status(200).json(jwt);
-                    }
-                }
-
-                return res.status(401).json({
-                    message: 'email and password do not match',
-                });
-            } catch (err) {
-                logger.error('🔥 error: %o', err);
-                return next(err);
-            }
+        const data: IUserCreateAttributes = {
+          email,
+          firstName,
+          hash,
+          lastName,
+          salt,
         }
-    );
 
-    route.get(
-        '/me',
-        jwtAuth,
-        currentUser,
-        userAccess('publisher:read'),
-        async (req: IAuthRequest, res: Response, next: NextFunction) => {
-            const logger: Logger = Container.get('logger');
+        const user = await User.create(data);
 
-            try {
-                const {
-                    currentUser,
-                } = req;
+        if (user) {
+          return res.status(201).json({ status: 'ok ' });
+        } else {
+          res.status(400).json({ status: 'failed' });
 
-                return res.status(200).json({ user: currentUser });
-            } catch (err) {
-                logger.error('🔥 error: %o', err);
-                return next(err);
-            }
+          return next();
         }
-    );
-
-    route.post(
-        '/register',
-        async (req: Request, res: Response, next: NextFunction) => {
-            const logger: Logger = Container.get('logger');
-
-            try {
-                const {
-                    email,
-                    password,
-                    firstName,
-                    lastName,
-                } = (req.body as IUserCreateParams);
-
-                const { hash, salt } = await EncryptionHelper.encrypt(password);
-
-                const data: IUserCreateAttributes = {
-                    email,
-                    firstName,
-                    hash,
-                    lastName,
-                    salt,
-                }
-
-                const user = await User.create(data);
-
-                if (user) {
-                    return res.status(201).json({ status: 'ok '});
-                } else {
-                    res.status(400).json({ status: 'failed' });
-
-                    return next();
-                }
-            } catch (err) {
-                if (err instanceof UniqueConstraintError) {
-                    return res.status(403).json({
-                        status: 'failed',
-                        message: 'Duplicate email',
-                    });
-                }
-
-                logger.error('🔥 error: %o', err);
-                return next(err);
-            }
+      } catch (err) {
+        if (err instanceof UniqueConstraintError) {
+          return res.status(403).json({
+            status: 'failed',
+            message: 'Duplicate email',
+          });
         }
-    );
 
-    route.get(
-        '/:userId',
-        jwtAuth,
-        currentUser,
-        async (req: Request, res: Response, next: NextFunction) => {
-            const logger: Logger = Container.get('logger');
+        logger.error('🔥 error: %o', err);
+        return next(err);
+      }
+    }
+  );
 
-            try {
-                const { userId } = req.params;
+  route.get(
+    '/:userId',
+    jwtAuth,
+    currentUser,
+    userAccess('users:read'),
+    async (req: Request, res: Response, next: NextFunction) => {
+      const logger: Logger = Container.get('logger');
 
-                const user = await User.findByPk(userId);
+      try {
+        const { userId } = req.params;
 
-                if (!user) {
-                    res.status(401);
-                    return next();
-                }
+        const user = await User.findByPk(userId);
 
-                const data = {
-                    user,
-                }
-
-                return res.status(200).json(data);
-            } catch (err) {
-                logger.error('🔥 error: %o', err);
-                return next(err);
-            }
+        if (!user) {
+          res.status(401);
+          return next();
         }
-    );
 
-    route.put(
-        '/:userId/grant-access',
-        jwtAuth,
-        currentUser,
-        userAccess('users:write'),
-        async (req: Request, res: Response, next: NextFunction) => {
-            const logger: Logger = Container.get('logger');
+        const json = JSON.parse(JSON.stringify(user, null, 2))
 
-            try {
-                const {
-                    role = '',
-                } = (req.body as IRoleParams);
-                const { userId } = req.params;
+        const data = serialize({
+          user: json,
+        });
 
-                const user = await User.findByPk(userId);
+        return res.status(200).json(data);
+      } catch (err) {
+        logger.error('🔥 error: %o', err);
+        return next(err);
+      }
+    }
+  );
 
-                if (!user) {
-                    res.status(401);
-                    return next();
-                }
+  route.put(
+    '/:userId/grant-access',
+    jwtAuth,
+    currentUser,
+    userAccess('users:write'),
+    async (req: Request, res: Response, next: NextFunction) => {
+      const logger: Logger = Container.get('logger');
 
-                user.update({ role });
-            } catch (err) {
-                logger.error('🔥 error: %o', err);
-                return next(err);
-            }
+      try {
+        const {
+          role = '',
+        } = (req.body as IRoleParams);
+        const { userId } = req.params;
+
+        const user = await User.findByPk(userId);
+
+        if (!user) {
+          res.status(401);
+          return next();
         }
-    );
+
+        await user.update({ role });
+
+        return res.status(204).end();
+      } catch (err) {
+        logger.error('🔥 error: %o', err);
+        return next(err);
+      }
+    }
+  );
 };
