@@ -22,10 +22,14 @@ const route = Router();
 const ENDPOINT = '/users';
 
 interface IUserCreateParams {
-  firstName: string;
-  lastName: string;
+  first_name: string;
+  last_name: string;
   password: string;
   email: string;
+}
+
+interface IUserCreate {
+  user: IUserCreateParams;
 }
 
 interface ILoginParams {
@@ -139,11 +143,13 @@ export default (app: Router) => {
 
       try {
         const {
-          email,
-          password,
-          firstName,
-          lastName,
-        } = (req.body as IUserCreateParams);
+          user: {
+            email,
+            password,
+            first_name: firstName,
+            last_name: lastName,
+          },
+        } = (req.body as IUserCreate);
 
         const { hash, salt } = await EncryptionHelper.encrypt(password);
 
@@ -153,12 +159,17 @@ export default (app: Router) => {
           hash,
           lastName,
           salt,
+          role: 'publisher',
         }
+
+        console.log('DATA: ', data)
 
         const user = await User.create(data);
 
         if (user) {
-          return res.status(201).json({ status: 'ok ' });
+          const data = JSON.parse(JSON.stringify(user, null, 2));
+
+          return res.status(201).json({ user: serialize(data) });
         } else {
           res.status(400).json({ status: 'failed' });
 

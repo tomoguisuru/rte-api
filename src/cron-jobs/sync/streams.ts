@@ -35,7 +35,10 @@ export default class StreamSyncTask extends CronJob {
         let streams: IStream[] = [];
 
         for (let event of events) {
-            const resp = await streamService.fetchStreams(event.id, { include_deleted: true });
+            const resp = await streamService.fetchStreams(event.id, {
+              stream_type: 'sdk',
+              include_deleted: true
+            });
             const { items = [] } = resp;
 
             streams = streams.concat(items);
