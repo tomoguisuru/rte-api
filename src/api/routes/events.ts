@@ -91,8 +91,6 @@ export default (app: Router) => {
           return res.status(404);
         }
 
-        console.log('record: ', record)
-
         const json = JSON.parse(JSON.stringify(record, null, 2));
 
         const serialized = serialize(json);
