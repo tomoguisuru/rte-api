@@ -162,8 +162,6 @@ export default (app: Router) => {
           role: 'publisher',
         }
 
-        console.log('DATA: ', data)
-
         const user = await User.create(data);
 
         if (user) {
