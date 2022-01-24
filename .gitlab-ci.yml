@@ -1,9 +1,9 @@
---- 
-Variables: 
-  E2E_COMMAND: "-l 216"
-include: 
-  - 
-    file: /pipelines/cli-test.yml
-    project: uplynk/e2e-team/cli
-stages: 
-  - test
+include:
+  - project: uplynk/e2e-team/cli
+    file: /pipelines/e2e_cli.yml
+ 
+stages:
+  - e2e-cli-test
+ 
+Variables:
+  E2E_COMMAND: -l 216
