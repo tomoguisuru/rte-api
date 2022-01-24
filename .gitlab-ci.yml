@@ -6,4 +6,4 @@ stages:
   - e2e-cli-test
  
 variables:
-  E2E_COMMAND: -l 216
+  E2E_COMMAND: -l 219
