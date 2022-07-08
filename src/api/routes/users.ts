@@ -3,7 +3,8 @@ import { Router, Request, Response, NextFunction } from 'express';
 import { UniqueConstraintError } from 'sequelize';
 import Container from 'typedi';
 import { Logger } from 'winston';
-import { RedisClient } from 'redis';
+// import { RedisClient } from 'redis';
+import { WrappedNodeRedisClient } from 'handy-redis';
 
 import { currentUser, IAuthRequest } from '../middleware/current-user';
 import jwtAuth from '../middleware/jwt-auth';
@@ -74,7 +75,7 @@ export default (app: Router) => {
     '/login',
     async (req: Request, res: Response, next: NextFunction) => {
       const logger: Logger = Container.get('logger');
-      const redisClient: RedisClient = Container.get('redisClient');
+      const redisClient: WrappedNodeRedisClient = Container.get('redisClient');
 
       try {
         const {

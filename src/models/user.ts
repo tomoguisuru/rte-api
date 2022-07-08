@@ -1,6 +1,8 @@
 import { EventDispatcher } from "event-dispatch";
-import { RedisClient } from 'redis';
-import Container from 'typedi';
+// import { RedisClient } from 'redis';
+import { Container } from 'typedi';
+
+import { WrappedNodeRedisClient } from 'handy-redis';
 
 import {
   sign,
@@ -87,8 +89,8 @@ export class User extends Model<IUserAttributes, IUserCreateAttributes> implemen
     return this.save();
   }
 
-  public getJWT(original_owner = null) {
-    const redisClient: RedisClient = Container.get('redisClient');
+  public async getJWT(original_owner = null) {
+    const redisClient: WrappedNodeRedisClient = Container.get('redisClient');
 
     var today = new Date();
     var exp = new Date(today);
@@ -139,15 +141,14 @@ export class User extends Model<IUserAttributes, IUserCreateAttributes> implemen
 
     const key = `${this.id}#refreshTokens`;
 
-    redisClient.get(key, (_err, resp) => {
-      let refreshTokens = [];
+    const resp = await redisClient.get(key);
+    let refreshTokens = [];
 
-      if (resp) {
-        refreshTokens = JSON.parse(resp);
-      }
+    if (resp) {
+      refreshTokens = JSON.parse(resp);
+    }
 
-      redisClient.set(key, JSON.stringify(refreshTokens));
-    });
+    redisClient.set(key, JSON.stringify(refreshTokens));
 
     return {
       token,
@@ -160,28 +161,18 @@ export class User extends Model<IUserAttributes, IUserCreateAttributes> implemen
   }
 
   public async verifyRefreshToken(token): Promise<boolean> {
-    const redisClient: RedisClient = Container.get('redisClient');
+    const redisClient: WrappedNodeRedisClient = Container.get('redisClient');
     const key = `${this.id}#refreshTokens`;
 
-    return new Promise(resolve => {
-      try {
-        redisClient.get(key, (err, resp) => {
-          if (err) {
-            throw err;
-          }
+    const resp = await redisClient.get(key);
 
-          if (!resp) {
-            throw new Error('No value set');
-          }
+    if (!resp) {
+      throw new Error('No value set');
+    }
 
-          const tokens: string[] = JSON.parse(resp);
+    const tokens: string[] = JSON.parse(resp);
 
-          resolve(tokens.includes(token));
-        });
-      } catch {
-        resolve(false);
-      }
-    });
+    return tokens.includes(token);
   }
 
   // @BeforeCreate

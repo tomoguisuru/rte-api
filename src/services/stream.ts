@@ -62,15 +62,15 @@ export default class StreamService {
         });
     }
 
-    public async performAction(streamId: string, action: string) {
+    public async performAction(streamId: string, action: string, method: string = 'post') {
         const url = buildUrl(`/rts/streams/${streamId}/${action}`);
 
         return this.proxyService.request({
+            method,
             url,
             data: {
                 timestamp: 0,
             },
-            method: 'post',
         });
     }
 }

@@ -17,7 +17,7 @@ export default {
         email: 'john.doe@example.com',
         role: 'admin',
         updatedAt: new Date(),
-        createdAt: new Date()
+        createdAt: new Date(),
       },
       {
         hash,
@@ -28,7 +28,7 @@ export default {
         email: 'bob.ross@example.com',
         role: 'publisher',
         updatedAt: new Date(),
-        createdAt: new Date()
+        createdAt: new Date(),
       },
     ], {});
   },

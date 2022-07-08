@@ -88,7 +88,7 @@ export default (app: Router) => {
         const record = await Event.findOne(findOptions);
 
         if (!record) {
-          return res.status(404);
+          return res.status(404).end();
         }
 
         const json = JSON.parse(JSON.stringify(record, null, 2));

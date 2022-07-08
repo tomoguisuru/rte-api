@@ -114,7 +114,6 @@ export default (app: Router) => {
     userAccess('stream:write'),
     async (req: Request, res: Response, next: NextFunction) => {
       const logger: Logger = Container.get('logger');
-      const streamService: StreamService = Container.get(StreamService);
 
       try {
         const {

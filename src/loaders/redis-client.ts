@@ -1,10 +1,11 @@
 import redis from 'redis';
 import { Container } from 'typedi';
 import { Logger } from 'winston';
+import { createNodeRedisClient, WrappedNodeRedisClient } from 'handy-redis';
 
 import config from '../config';
 
-function initRedis(): redis.RedisClient {
+function initRedis(): WrappedNodeRedisClient {
     const logger: Logger = Container.get('logger');
 
     const {
@@ -36,11 +37,14 @@ function initRedis(): redis.RedisClient {
         },
     }
 
-    const client = redis.createClient(options);
 
-    client.on('error', error => {
-        logger.error(error);
-    });
+    // const client = redis.createClient(options);
+    const client = createNodeRedisClient(options);
+    // client.get
+
+    // client.on('error', error => {
+    //     logger.error(error);
+    // });
 
     return client;
 }
