@@ -1,6 +1,8 @@
 import { Router, Request, Response, NextFunction } from 'express';
+import { Container } from 'typedi';
 import { Logger } from 'winston';
-import Container from 'typedi';
+
+import { RedisClient } from '../../utils/redis-client';
 
 import { currentUser } from "../middleware/current-user";
 import jwtAuth from "../middleware/jwt-auth";
@@ -180,6 +182,8 @@ export default (app: Router) => {
     async (req: Request, res: Response, next: NextFunction) => {
       const logger: Logger = Container.get('logger');
       const eventService: EventService = Container.get(EventService);
+      const cacheKey = `event-manifest#`
+      let redisClient: RedisClient = Container.get('redisClient');
 
       try {
         const {
@@ -187,7 +191,11 @@ export default (app: Router) => {
           query,
         } = req;
 
-        const data = await eventService.getManifest(eventId, query);
+        const data = await redisClient.fromCache(
+          cacheKey,
+          () => eventService.getManifest(eventId, query),
+          5,
+        );
 
         return res.status(200).json(data);
       } catch (err) {

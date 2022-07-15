@@ -1,8 +1,7 @@
 import { EventDispatcher } from "event-dispatch";
-// import { RedisClient } from 'redis';
 import { Container } from 'typedi';
 
-import { WrappedNodeRedisClient } from 'handy-redis';
+import { RedisClient } from '../utils/redis-client';
 
 import {
   sign,
@@ -90,7 +89,7 @@ export class User extends Model<IUserAttributes, IUserCreateAttributes> implemen
   }
 
   public async getJWT(original_owner = null) {
-    const redisClient: WrappedNodeRedisClient = Container.get('redisClient');
+    const redisClient: RedisClient = Container.get('redisClient');
 
     var today = new Date();
     var exp = new Date(today);
@@ -141,14 +140,14 @@ export class User extends Model<IUserAttributes, IUserCreateAttributes> implemen
 
     const key = `${this.id}#refreshTokens`;
 
-    const resp = await redisClient.get(key);
+    const resp = await redisClient.client?.get(key);
     let refreshTokens = [];
 
     if (resp) {
       refreshTokens = JSON.parse(resp);
     }
 
-    redisClient.set(key, JSON.stringify(refreshTokens));
+    redisClient.client?.setex(key, refreshSecretTTL, JSON.stringify(refreshTokens));
 
     return {
       token,
@@ -161,10 +160,10 @@ export class User extends Model<IUserAttributes, IUserCreateAttributes> implemen
   }
 
   public async verifyRefreshToken(token): Promise<boolean> {
-    const redisClient: WrappedNodeRedisClient = Container.get('redisClient');
+    const redisClient: RedisClient = Container.get('redisClient');
     const key = `${this.id}#refreshTokens`;
 
-    const resp = await redisClient.get(key);
+    const resp = await redisClient.client?.get(key);
 
     if (!resp) {
       throw new Error('No value set');

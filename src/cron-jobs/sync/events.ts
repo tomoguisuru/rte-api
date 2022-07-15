@@ -34,7 +34,7 @@ export default class EventSyncTask extends CronJob {
       const queryParams = await this.getQueryParams();
       const events = await eventService.getAllEvents(queryParams);
 
-      this.redisClient.set(this.cacheKey, moment().toISOString());
+      this.redisClient.client?.setex(this.cacheKey, 500, moment().toISOString());
 
       if (!events.length) {
         return;

@@ -46,7 +46,7 @@ export default class StreamSyncTask extends CronJob {
       const resp = await roomService.fetchRooms(event.id, queryParams);
       const { items = [] } = resp;
 
-      this.redisClient.set(this.cacheKey, moment().toISOString());
+      this.redisClient.client?.setex(this.cacheKey, 500, moment().toISOString());
 
       rooms = rooms.concat(items);
     }

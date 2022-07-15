@@ -44,7 +44,6 @@ const prune = [
     'stream_type',
 ]
 
-
 @Service()
 export default class StreamService {
     constructor(
@@ -72,5 +71,26 @@ export default class StreamService {
                 timestamp: 0,
             },
         });
+    }
+
+    public async getToken(streamId: string, type: string, data: any = {}) {
+      const url = buildUrl(`/rts/streams/${streamId}/token/${type}`);
+
+      if (!('expired_in' in data) && !('expires_at' in data)) {
+        Object.assign(data, { expires_in: 3600 });
+      }
+
+      const resp = await this.proxyService.request({
+        data,
+        url,
+        method: 'post',
+        prune: ['@id', '@type'],
+      });
+
+      this.logger.info('resp: %o', resp);
+
+      const { token = '' } = resp
+
+      return { token };
     }
 }

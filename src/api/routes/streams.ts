@@ -1,6 +1,8 @@
 import { Router, Request, Response, NextFunction } from 'express';
+import { Container } from 'typedi';
 import { Logger } from 'winston';
-import Container from 'typedi';
+
+import { RedisClient } from '../../utils/redis-client';
 
 import { currentUser, IAuthRequest } from "../middleware/current-user";
 import jwtAuth from "../middleware/jwt-auth";
@@ -74,6 +76,39 @@ export default (app: Router) => {
         return next(err);
       }
     },
+  );
+
+  route.post(
+    '/:streamId/token/:tokenType',
+    async (req: Request, res: Response, next: NextFunction) => {
+      const logger: Logger = Container.get('logger');
+      const streamService: StreamService = Container.get(StreamService);
+      let redisClient: RedisClient = Container.get('redisClient');;
+
+      try {
+        const {
+          params: {
+            streamId,
+            tokenType,
+          },
+        } = req;
+
+        const data = await redisClient.fromCache(
+          `stream-token#${streamId}#${tokenType}`,
+          () => streamService.getToken(streamId, tokenType, req.body),
+          60,
+        );
+
+        return res.status(200).json(data);
+      } catch (err) {
+        logger.error('🔥 error: %o', err);
+
+        return res.status(500).json({
+          status: 'failed',
+          message: err.message,
+        });
+      }
+    }
   );
 
   route.post(

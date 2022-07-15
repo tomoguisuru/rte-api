@@ -3,15 +3,15 @@ import moment from 'moment';
 import { Logger } from 'winston';
 import { Container } from 'typedi';
 import { ScheduledTask } from 'node-cron';
-// import { RedisClient } from 'redis';
-import { WrappedNodeRedisClient } from 'handy-redis';
+
+import { RedisClient } from '../utils/redis-client';
 
 abstract class CronJob {
     protected logger: Logger;
 
     protected scheduledTask?: ScheduledTask;
 
-    protected redisClient: WrappedNodeRedisClient;
+    protected redisClient: RedisClient;
     protected abstract cacheKey: string;
 
     /**
@@ -22,7 +22,7 @@ abstract class CronJob {
     protected async getQueryParams() {
       let lastRefresh = 0;
 
-      const cached = await this.redisClient.get(this.cacheKey);
+      const cached = await this.redisClient.client?.get(this.cacheKey);
 
       if (cached) {
         lastRefresh = moment(cached).diff(moment(), 'seconds');
