@@ -22,8 +22,6 @@ export class RedisClient {
     let cached;
 
     try {
-      this.client = Container.get('redisClient');
-
       cached = await this.client?.get(cacheKey);
       this.logger.info(`${cacheKey} - Pulled from cache`);
     } catch {
@@ -73,8 +71,6 @@ export class RedisClient {
         },
     }
 
-
-    // const client = redis.createClient(options);
     this.client = createNodeRedisClient(options);
   }
 }

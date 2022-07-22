@@ -1,10 +1,8 @@
 import { Service } from 'typedi';
-import { Logger } from 'winston';
 
 import UplynkProxyService from './uplynk-proxy';
 
 import { buildUrl } from '../utils/url-tools';
-
 
 export interface IStreamOptions {
     quality: 'hd' | 'sd';
@@ -47,7 +45,6 @@ const prune = [
 @Service()
 export default class StreamService {
     constructor(
-        private logger: Logger,
         private proxyService: UplynkProxyService,
     ) {}
 
@@ -86,8 +83,6 @@ export default class StreamService {
         method: 'post',
         prune: ['@id', '@type'],
       });
-
-      this.logger.info('resp: %o', resp);
 
       const { token = '' } = resp
 

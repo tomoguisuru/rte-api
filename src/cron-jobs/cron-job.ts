@@ -29,7 +29,6 @@ abstract class CronJob {
       }
 
       const query = {
-        // after: 'now-20s',
         include_deleted: true,
       };
 

@@ -8,14 +8,11 @@ import { currentUser, IAuthRequest } from '../middleware/current-user';
 import jwtAuth from '../middleware/jwt-auth';
 import userAccess from '../middleware/user-access';
 
-import config from '../../config';
-
 import { IUserCreateAttributes, User } from '../../models/user';
 
 import { serialize } from '../../utils/adapter-tools';
 import { EncryptionHelper } from '../../utils/encryption';
 import { paginate } from '../../utils/pagination';
-import { RedisClient } from '../../utils/redis-client';
 
 const route = Router();
 const ENDPOINT = '/users';
@@ -73,17 +70,12 @@ export default (app: Router) => {
     '/login',
     async (req: Request, res: Response, next: NextFunction) => {
       const logger: Logger = Container.get('logger');
-      const redisClient: RedisClient = Container.get('redisClient');
 
       try {
         const {
           email = '',
           password = '',
         } = (req.body as ILoginParams);
-
-        const {
-          refreshSecretTTL,
-        } = config.jwt;
 
         const user = await User.scope('login').findOne({ where: { email } });
 
@@ -92,14 +84,6 @@ export default (app: Router) => {
 
           if (verified) {
             const jwt = await user.getJWT();
-
-            const {
-              refreshToken,
-            } = jwt;
-
-            const key = `${user.id}#refreshTokens`;
-
-            redisClient.client?.setex(key, refreshSecretTTL, refreshToken)
 
             return res.status(200).json(jwt);
           }

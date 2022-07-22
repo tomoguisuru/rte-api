@@ -140,14 +140,7 @@ export class User extends Model<IUserAttributes, IUserCreateAttributes> implemen
 
     const key = `${this.id}#refreshTokens`;
 
-    const resp = await redisClient.client?.get(key);
-    let refreshTokens = [];
-
-    if (resp) {
-      refreshTokens = JSON.parse(resp);
-    }
-
-    redisClient.client?.setex(key, refreshSecretTTL, JSON.stringify(refreshTokens));
+    redisClient.client?.setex(key, refreshSecretTTL, refreshToken);
 
     return {
       token,
@@ -169,9 +162,7 @@ export class User extends Model<IUserAttributes, IUserCreateAttributes> implemen
       throw new Error('No value set');
     }
 
-    const tokens: string[] = JSON.parse(resp);
-
-    return tokens.includes(token);
+    return token === resp;
   }
 
   // @BeforeCreate
