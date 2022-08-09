@@ -61,6 +61,38 @@ export default (app: Router) => {
   );
 
   route.get(
+    '/list',
+    async (req: Request, res: Response, next: NextFunction) => {
+      const logger: Logger = Container.get('logger');
+
+      try {
+        const options = paginate(req);
+
+        options['where'] = {
+          state: 'live',
+        };
+
+        const results = await Event.findAndCountAll(options);
+
+        const data = serialize({
+          events: results.rows,
+          total_items: results.count,
+        });
+
+        return res.status(200).json(data);
+      } catch (err) {
+
+        logger.error('🔥 error: %o', err);
+
+        return res.status(500).json({
+          status: 'failed',
+          message: err.message,
+        });
+      }
+    }
+  );
+
+  route.get(
     '/:eventId',
     jwtAuth,
     currentUser,
