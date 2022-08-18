@@ -1,6 +1,7 @@
 import { EventDispatcher } from "event-dispatch";
-import { RedisClient } from 'redis';
-import Container from 'typedi';
+import { Container } from 'typedi';
+
+import { RedisClient } from '../utils/redis-client';
 
 import {
   sign,
@@ -87,7 +88,7 @@ export class User extends Model<IUserAttributes, IUserCreateAttributes> implemen
     return this.save();
   }
 
-  public getJWT(original_owner = null) {
+  public async getJWT(original_owner = null) {
     const redisClient: RedisClient = Container.get('redisClient');
 
     var today = new Date();
@@ -139,15 +140,7 @@ export class User extends Model<IUserAttributes, IUserCreateAttributes> implemen
 
     const key = `${this.id}#refreshTokens`;
 
-    redisClient.get(key, (_err, resp) => {
-      let refreshTokens = [];
-
-      if (resp) {
-        refreshTokens = JSON.parse(resp);
-      }
-
-      redisClient.set(key, JSON.stringify(refreshTokens));
-    });
+    redisClient.client?.setex(key, refreshSecretTTL, refreshToken);
 
     return {
       token,
@@ -163,25 +156,13 @@ export class User extends Model<IUserAttributes, IUserCreateAttributes> implemen
     const redisClient: RedisClient = Container.get('redisClient');
     const key = `${this.id}#refreshTokens`;
 
-    return new Promise(resolve => {
-      try {
-        redisClient.get(key, (err, resp) => {
-          if (err) {
-            throw err;
-          }
+    const resp = await redisClient.client?.get(key);
 
-          if (!resp) {
-            throw new Error('No value set');
-          }
+    if (!resp) {
+      throw new Error('No value set');
+    }
 
-          const tokens: string[] = JSON.parse(resp);
-
-          resolve(tokens.includes(token));
-        });
-      } catch {
-        resolve(false);
-      }
-    });
+    return token === resp;
   }
 
   // @BeforeCreate

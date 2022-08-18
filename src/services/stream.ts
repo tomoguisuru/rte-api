@@ -1,10 +1,8 @@
 import { Service } from 'typedi';
-import { Logger } from 'winston';
 
 import UplynkProxyService from './uplynk-proxy';
 
 import { buildUrl } from '../utils/url-tools';
-
 
 export interface IStreamOptions {
     quality: 'hd' | 'sd';
@@ -44,11 +42,9 @@ const prune = [
     'stream_type',
 ]
 
-
 @Service()
 export default class StreamService {
     constructor(
-        private logger: Logger,
         private proxyService: UplynkProxyService,
     ) {}
 
@@ -62,15 +58,34 @@ export default class StreamService {
         });
     }
 
-    public async performAction(streamId: string, action: string) {
+    public async performAction(streamId: string, action: string, method: string = 'post') {
         const url = buildUrl(`/rts/streams/${streamId}/${action}`);
 
         return this.proxyService.request({
+            method,
             url,
             data: {
                 timestamp: 0,
             },
-            method: 'post',
         });
+    }
+
+    public async getToken(streamId: string, type: string, data: any = {}) {
+      const url = buildUrl(`/rts/streams/${streamId}/token/${type}`);
+
+      if (!('expired_in' in data) && !('expires_at' in data)) {
+        Object.assign(data, { expires_in: 3600 });
+      }
+
+      const resp = await this.proxyService.request({
+        data,
+        url,
+        method: 'post',
+        prune: ['@id', '@type'],
+      });
+
+      const { token = '' } = resp
+
+      return { token };
     }
 }

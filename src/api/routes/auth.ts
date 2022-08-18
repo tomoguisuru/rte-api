@@ -17,8 +17,6 @@ interface IImpersonateParams {
     userId: string;
 }
 
-const tokens: string[] = [];
-
 export default (app: Router) => {
     app.use(ENDPOINT, route);
 

@@ -87,12 +87,11 @@ export default class EventService {
     }
 
     public async getAllEvents(query: any = {}): Promise<IEvent[]> {
-
-
-        query = Object.assign({
+        query = {
             page: 1,
             page_size: 20,
-        }, query);
+            ...query,
+        };
 
         const resp = await this.getEvents(query);
         const {

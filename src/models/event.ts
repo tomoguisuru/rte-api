@@ -10,6 +10,7 @@ import {
   Table,
 } from 'sequelize-typescript';
 
+import { Room } from './room';
 import { Stream } from './stream';
 
 export interface IEventAttributes {
@@ -53,6 +54,9 @@ export class Event extends Model<IEventAttributes> implements IEventAttributes {
 
   @Column
   desc: string;
+
+  @HasMany(() => Room)
+  rooms: Room[];
 
   @HasMany(() => Stream)
   streams: Stream[];

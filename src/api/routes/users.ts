@@ -1,22 +1,18 @@
 
 import { Router, Request, Response, NextFunction } from 'express';
 import { UniqueConstraintError } from 'sequelize';
-import Container from 'typedi';
+import { Container } from 'typedi';
 import { Logger } from 'winston';
-import { RedisClient } from 'redis';
 
 import { currentUser, IAuthRequest } from '../middleware/current-user';
 import jwtAuth from '../middleware/jwt-auth';
 import userAccess from '../middleware/user-access';
 
-import { serialize } from '../../utils/adapter-tools';
-import {
-  paginate,
-} from '../../utils/pagination';
-
 import { IUserCreateAttributes, User } from '../../models/user';
 
+import { serialize } from '../../utils/adapter-tools';
 import { EncryptionHelper } from '../../utils/encryption';
+import { paginate } from '../../utils/pagination';
 
 const route = Router();
 const ENDPOINT = '/users';
@@ -74,7 +70,6 @@ export default (app: Router) => {
     '/login',
     async (req: Request, res: Response, next: NextFunction) => {
       const logger: Logger = Container.get('logger');
-      const redisClient: RedisClient = Container.get('redisClient');
 
       try {
         const {
@@ -89,14 +84,6 @@ export default (app: Router) => {
 
           if (verified) {
             const jwt = await user.getJWT();
-
-            const {
-              refreshToken,
-            } = jwt;
-
-            const key = `${user.id}#refreshTokens`;
-
-            redisClient.set(key, refreshToken)
 
             return res.status(200).json(jwt);
           }

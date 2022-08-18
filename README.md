@@ -11,23 +11,60 @@ ___
 - Node >= 14.16.x
 - NPM >= 7.10.x
 - Redis >= 6.2.x
-- UCC Owner ID [here](https://cms-ausw2-dt-rts1.downlynk.com/static/cms2/index.html#/settings)
-- UCC API Key [here](https://cms-ausw2-dt-rts1.downlynk.com/static/cms2/index.html#/settings/integration-keys)
 
 ___
 
 ## Getting Started
-You will need to create a `.env` file and copy the contents of the `example.env` file into it.
 
-Once you do, you will need to copy your `Owner ID` and `APIKey` into the file
+```bash
+npm run env:init
+```
 
-You will need to do this so that proxy operations can be made to the UCC Services endpoints.
+Three versions of the `.env` file will be created:
+- `.env.local`
+- `.env.staging`
+- `.env.prod`
 
-Be sure to update any values or secrets in the `.env` file that do not match your local setup
+
+Copy your `Owner ID` and `APIKey` into the file for the appropriate environments.
+
+#### downlynk
+
+- [Owner ID](https://cms.downlynk.com/static/cms2/index.html#/settings)
+- [APIKey](https://cms.downlynk.com/static/cms2/index.html#/settings/integration-keys)
+
+#### uplynk
+
+- [Owner ID](https://cms.upwnlynk.com/static/cms2/index.html#/settings)
+- [API Key](https://cms.upwnlynk.com/static/cms2/index.html#/settings/integration-keys)
+
+### Selecting an Environment
+
+_local prod_
+```bash
+npm run env:prod:local
+```
+
+_local staging_
+```bash
+npm run env:staging:local
+```
+
+_staging_
+```bash
+npm run env:staging
+```
+
+_prod_
+```bash
+npm run env:prod
+```
 
 ___
 
 ## Preparing the DB
+
+Run on initial setup or when changing from production to staging or staging to production envs
 
 ```bash
 npm run db:init

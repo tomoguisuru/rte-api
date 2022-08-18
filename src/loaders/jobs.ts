@@ -3,6 +3,7 @@ import { Logger } from 'winston';
 
 import SyncEvents from '../cron-jobs/sync/events';
 import SyncStreams from '../cron-jobs/sync/streams';
+import SyncRooms from '../cron-jobs/sync/rooms';
 
 import CronJob from '../cron-jobs/cron-job';
 
@@ -34,14 +35,15 @@ export default () => {
 
     jobs.registerCronJob('events', new SyncEvents());
     jobs.registerCronJob('streams', new SyncStreams());
+    jobs.registerCronJob('rooms', new SyncRooms());
 
     // NOTE: If you don't want to wait for the cron job, just comment out this
     //       and it will sync when the server starts
-    // Object.keys(jobs.cronJobs).forEach(async (key) => {
-    //     const job = jobs.cronJobs[key];
+    Object.keys(jobs.cronJobs).forEach(async (key) => {
+        const job = jobs.cronJobs[key];
 
-    //     await job.run();
-    // });
+        await job.run();
+    });
 
     return jobs;
 }

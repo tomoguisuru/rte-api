@@ -1,9 +1,0 @@
-include:
-  - project: uplynk/e2e-team/cli
-    file: /pipelines/e2e_cli.yml
- 
-stages:
-  - e2e-cli-test
- 
-variables:
-  E2E_COMMAND: -l 219
