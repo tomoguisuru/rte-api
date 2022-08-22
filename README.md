@@ -7,9 +7,9 @@ Note: This application is provided without warranty or guarantee of function.
 ___
 
 ## Requirements
-- Postgres 13
-- Node >= 14.16.x
-- NPM >= 7.10.x
+- Postgres >= 13
+- Node >= 16.16.x
+- NPM >= 8.11.x
 - Redis >= 6.2.x
 
 ___
